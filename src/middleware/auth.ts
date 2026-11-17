@@ -15,7 +15,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
       next(new ApiError(401, 'Invalid or expired token'));
       return;
     }
-    res.locals.userId = user.userId; // Gemmer brugeren til naeste middleware
+    res.locals.userId = user.userId; // Gemmer brugeren til næste middleware
     next();
   } catch (error) {
     next(error); // Fx hvis serverens JWT_SECRET mangler

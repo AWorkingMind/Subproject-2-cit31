@@ -9,7 +9,7 @@ export function userDto(user: { user_id: number; username: string }) {
     bookmarksUri: `${uri}/bookmarks`,
     searchHistoryUri: `${uri}/search-history`,
     ratingHistoryUri: `${uri}/ratings`
-  }; // Kun det som frontend maa se, aldrig password_hash
+  }; // Kun det som frontend må se, aldrig password_hash
 }
 
 export async function getUser(id: number) {

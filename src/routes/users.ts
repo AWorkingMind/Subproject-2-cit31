@@ -13,7 +13,7 @@ function validUsername(value: unknown): value is string {
 function validPassword(value: unknown): value is string {
   return typeof value === 'string'
     && value.length >= 8
-    && Buffer.byteLength(value, 'utf8') <= 72; // bcrypt bruger kun de foerste 72 bytes
+    && Buffer.byteLength(value, 'utf8') <= 72; // bcrypt bruger kun de første 72 bytes
 }
 
 usersRouter.post('/', async (req, res, next) => {
