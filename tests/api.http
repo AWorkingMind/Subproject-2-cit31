@@ -1,6 +1,8 @@
 @baseUrl = http://localhost:3000
 # Set this to an existing user. Successful rating requests change database data.
 @ratingUserId = 1
+# Paste a login token for ratingUserId from POST /api/auth/login.
+@authToken = REPLACE_WITH_LOGIN_TOKEN
 @titleWithCredits = tt11051918
 # Verified in the configured database: existing title without credits.
 @titleWithoutCredits = tt10008688
@@ -11,6 +13,7 @@
 
 ### Create or replace a rating: expected 204 (writes to the database)
 PUT {{baseUrl}}/api/users/{{ratingUserId}}/ratings/{{titleWithCredits}}
+Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 {"score": 8}
@@ -23,6 +26,7 @@ Content-Type: application/json
 
 ### Reject rating outside 1-10: expected 400
 PUT {{baseUrl}}/api/users/{{ratingUserId}}/ratings/{{titleWithCredits}}
+Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 {"score": 11}

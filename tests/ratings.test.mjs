@@ -5,6 +5,9 @@ import { DatabaseError } from "pg";
 import app from "../src/app.ts";
 import { pool } from "../src/db.ts";
 
+import { signToken } from "../src/auth/tokens.ts";
+process.env.JWT_SECRET = "ratings-test-secret-with-at-least-32-characters";
+
 test("ratings endpoint", async (t) => {
     const server = app.listen(0, "127.0.0.1");
     await once(server, "listening");
@@ -17,10 +20,17 @@ test("ratings endpoint", async (t) => {
     async function put(path, body) {
         return fetch(`${baseUrl}/${path}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${signToken(1)}` },
             body: JSON.stringify(body),
         });
     }
+
+    await t.test("rejects missing tokens and another user's ratings", async (t) => {
+        t.mock.method(pool, "query", async () => assert.fail("Unexpected database call"));
+        const missing = await fetch(baseUrl + "/1/ratings/tt11051918", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({score: 8}) });
+        assert.equal(missing.status, 401);
+        assert.equal((await put("2/ratings/tt11051918", {score: 8})).status, 403);
+    });
 
     await t.test("create and replace ratings using parameterized calls", async (t) => {
         const calls = [];
@@ -47,7 +57,7 @@ test("ratings endpoint", async (t) => {
             assert.equal((await put(path, { score: 8 })).status, 400);
         }
         const malformed = await fetch(`${baseUrl}/1/ratings/tt11051918`, {
-            method: "PUT", headers: { "Content-Type": "application/json" }, body: "{",
+            method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${signToken(1)}` }, body: "{",
         });
         assert.equal(malformed.status, 400);
     });
