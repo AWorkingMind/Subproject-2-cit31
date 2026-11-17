@@ -9,7 +9,7 @@ export class ApiError extends Error {
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   const known = err instanceof ApiError; // Fejl vi selv har lavet
   const duplicate = typeof err === 'object' && err !== null
-    && 'code' in err && err.code === '23505'; // PostgreSQL: unik vaerdi findes allerede
+    && 'code' in err && err.code === '23505'; // PostgreSQL: unik værdi findes allerede
 
   const status = known && [400, 401, 403, 404, 409].includes(err.status)
     ? err.status
