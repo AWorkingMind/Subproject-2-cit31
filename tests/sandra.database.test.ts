@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { pool } from '../src/db.js';
 import { createUserOn, findUserByIdOn, findUserByNameOn } from '../src/data/users.js';
 
-// Koeres kun naar den rigtige adgangskode er sat i .env.
+// Køres kun når den rigtige adgangskode er sat i .env.
 const enabled = Boolean(process.env.DB_PASSWORD)
   && process.env.DB_PASSWORD !== 'DIT_PASSWORD';
 

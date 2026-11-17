@@ -42,7 +42,7 @@ describe('Person 3', () => {
   it('403 naar man beder om en anden brugers konto', async () => {
     const token = signToken(7);
     const res = await request(app).get('/api/users/9').set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(403); // Stopper foer databasen bliver brugt
+    expect(res.status).toBe(403); // Stopper før databasen bliver brugt
   });
 
   it('400 for et ugyldigt bruger-id efter token-check', async () => {
