@@ -1,21 +1,34 @@
 import express from 'express';
+import cors from 'cors';
+import { authRouter } from './routes/auth.js';
+import { usersRouter } from './routes/users.js';
+import { ApiError, errorHandler } from './middleware/errorHandler.js';
 
-// Creates the Express application.
-// This file is responsible for setting up the API itself.
 export const app = express();
 
-// Middleware that allows the API to read JSON request bodies.
-// Example:
-// {
-//   "rating": 8
-// }
-app.use(express.json());
+// Kun Subproject 3's konfigurerede origin får lov til at kalde API'et.
+const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, !origin || origin === frontendOrigin);
+  }
+}));
+app.use(express.json()); // Så kan vi læse JSON fra requests
 
-// Routes will be connected here later.
-//
-// Example:
-// app.use('/users', usersRouter);
-// app.use('/titles', titlesRouter);
+// Ugyldig JSON skal give 400, ikke en ukendt 500-fejl
+app.use((err: unknown, _req: express.Request, _res: express.Response, next: express.NextFunction) => {
+  if (typeof err === 'object' && err !== null && 'type' in err && err.type === 'entity.parse.failed') {
+    next(new ApiError(400, 'Invalid JSON body'));
+  } else {
+    next(err);
+  }
+});
 
-// The global error handler will eventually be placed here.
-// It should be added AFTER the routes so it can catch their errors.
+app.use('/api/auth', authRouter); // POST /api/auth/login
+app.use('/api/users', usersRouter); // POST, GET, PATCH og DELETE
+
+// HER skal Person 1 og Person 2 senere sætte deres ruter ind.
+// Fx: app.use('/api/titles', titlesRouter);
+
+app.use((_req, _res, next) => next(new ApiError(404, 'Route not found'))); // Ukendt endpoint
+app.use(errorHandler); // SKAL stå efter alle ruterne
