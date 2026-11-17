@@ -14,7 +14,7 @@ searchRouter.get("/titles",async (reg,res,next) => {
             return;
         }
 //Virker kun med middleware giver det mening???
-        const userId = res.locals.user.userId;
+        const userId = res.locals.user?.userId ?? null;
 
         const results = await stringSearch(userId, searchString)
 

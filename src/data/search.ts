@@ -21,7 +21,7 @@ export type SimilarMovieRow = {
 
 //her laver jeg en function ved navn "stringSearch" og anvender de korrekte værdier som parameter defineret i vores SQL funktioner
 //Denne fremgang gentager sig meget.
-export async function stringSearch(userId: number, searchString: string): Promise<SearchResultRow[]> {
+export async function stringSearch(userId: number | null, searchString: string): Promise<SearchResultRow[]> {
 const result = await pool.query<SearchResultRow>(
     'SELECT * FROM string_search($1,$2)',
     [userId, searchString]
