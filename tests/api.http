@@ -1,4 +1,6 @@
 @baseUrl = http://localhost:3000
+# Set this to an existing user. Successful rating requests change database data.
+@ratingUserId = 1
 @titleWithCredits = tt11051918
 # Verified in the configured database: existing title without credits.
 @titleWithoutCredits = tt10008688
@@ -6,6 +8,31 @@
 @coPlayerPerson = nm0000002
 # Verified in the configured database: existing person with no co-players.
 @personWithoutCoPlayers = nm0000001
+
+### Create or replace a rating: expected 204 (writes to the database)
+PUT {{baseUrl}}/api/users/{{ratingUserId}}/ratings/{{titleWithCredits}}
+Content-Type: application/json
+
+{"score": 8}
+
+> {%
+    client.test("Rating is saved", function () {
+        client.assert(response.status === 204, "Expected 204; use an existing ratingUserId");
+    });
+%}
+
+### Reject rating outside 1-10: expected 400
+PUT {{baseUrl}}/api/users/{{ratingUserId}}/ratings/{{titleWithCredits}}
+Content-Type: application/json
+
+{"score": 11}
+
+> {%
+    client.test("Rating rejects an invalid score", function () {
+        client.assert(response.status === 400, "Expected 400");
+        client.assert(response.body.message === "score must be an integer between 1 and 10", "Unexpected message");
+    });
+%}
 
 ### Co-players default page (use an existing person with co-players)
 GET {{baseUrl}}/api/people/{{coPlayerPerson}}/co-players

@@ -16,6 +16,28 @@ export function parseTconst(value: string): string {
     return value;
 }
 
+export function parseUserId(value: string): number {
+    if (!/^[0-9]+$/.test(value)) {
+        throw new BadRequest("userId must be a positive integer");
+    }
+    const userId = Number(value);
+    if (!Number.isInteger(userId) || userId < 1 || userId > 2147483647) {
+        throw new BadRequest("userId must be a positive PostgreSQL integer");
+    }
+    return userId;
+}
+
+export function parseRatingScore(body: unknown): number {
+    if (typeof body !== "object" || body === null || Array.isArray(body) || !("score" in body)) {
+        throw new BadRequest("Request body must contain score");
+    }
+    const score = body.score;
+    if (typeof score !== "number" || !Number.isInteger(score) || score < 1 || score > 10) {
+        throw new BadRequest("score must be an integer between 1 and 10");
+    }
+    return score;
+}
+
 export function parsePositiveInteger(value: unknown, fallback: number, name: string): number {
     if (value === undefined) return fallback;
 
