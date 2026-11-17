@@ -25,3 +25,5 @@ The tests show that passwords are not returned in the user DTO, invalid and miss
 ## Limitations
 
 No `.env` file or real database password was available in this run, so the RUC database connection was not attempted and no data was changed. IMDB reads, paged lists, bookmarks, ratings, and search history are Person 1 or Person 2 endpoints and are not present in this project folder.
+
+A successful HTTP registration was not run because it would commit a user outside the rollback-only database test.
