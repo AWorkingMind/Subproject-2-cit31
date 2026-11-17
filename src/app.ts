@@ -1,21 +1,18 @@
-import express from 'express';
+import express from "express";
+import { errorHandler, NotFound } from "./middleware/errorHandler.js";
+import healthRouter from "./routes/health.js";
+import titlesRouter from "./routes/titles.js";
+import peopleRouter from "./routes/people.js";
 
-// Creates the Express application.
-// This file is responsible for setting up the API itself.
-export const app = express();
+const app = express();
 
-// Middleware that allows the API to read JSON request bodies.
-// Example:
-// {
-//   "rating": 8
-// }
 app.use(express.json());
+app.use("/api/health", healthRouter);
+app.use("/api/titles", titlesRouter);
+app.use("/api/people", peopleRouter);
+app.use((_req, _res, next) => {
+    next(new NotFound("No such endpoint"));
+});
+app.use(errorHandler);
 
-// Routes will be connected here later.
-//
-// Example:
-// app.use('/users', usersRouter);
-// app.use('/titles', titlesRouter);
-
-// The global error handler will eventually be placed here.
-// It should be added AFTER the routes so it can catch their errors.
+export default app;

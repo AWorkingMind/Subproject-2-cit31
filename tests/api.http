@@ -1,0 +1,782 @@
+@baseUrl = http://localhost:3000
+@titleWithCredits = tt11051918
+# Verified in the configured database: existing title without credits.
+@titleWithoutCredits = tt10008688
+@missingTitle = tt9999999
+@coPlayerPerson = nm0000002
+# Verified in the configured database: existing person with no co-players.
+@personWithoutCoPlayers = nm0000001
+
+### Co-players default page (use an existing person with co-players)
+GET {{baseUrl}}/api/people/{{coPlayerPerson}}/co-players
+
+> {%
+    client.global.clear("firstPageCoPlayerUris");
+    client.global.clear("firstPageCoPlayerLastFrequency");
+
+    client.test("Co-players pagination and DTO", function () {
+        client.assert(response.status === 200, "Expected 200");
+        const body = response.body;
+        client.assert(body.page === 1 && body.pageSize === 10, "Invalid pagination");
+        client.assert(typeof body.hasNextPage === "boolean", "Missing hasNextPage");
+        client.assert(Array.isArray(body.items) && body.items.length > 0 && body.items.length <= 10, "Use a person with co-players");
+        client.assert(!body.hasNextPage || body.items.length === 10, "A page with more results must be full");
+        let previousFrequency = Infinity;
+        const uris = [];
+        body.items.forEach(person => {
+            client.assert(JSON.stringify(Object.keys(person).sort()) === JSON.stringify(["frequency", "name", "personUri"]), "Unexpected DTO attributes");
+            client.assert(typeof person.personUri === "string" && /^\/api\/people\/nm[0-9]{7,8}$/.test(person.personUri), "Invalid personUri");
+            client.assert(person.personUri !== "/api/people/{{coPlayerPerson}}", "Person must not be their own co-player");
+            client.assert(person.name === null || typeof person.name === "string", "Invalid name");
+            client.assert(Number.isSafeInteger(person.frequency) && person.frequency >= 1, "Invalid frequency");
+            client.assert(person.frequency <= previousFrequency, "Frequency must be descending");
+            client.assert(!uris.includes(person.personUri), "Duplicate co-player");
+            previousFrequency = person.frequency;
+            uris.push(person.personUri);
+        });
+        client.global.set("firstPageCoPlayerUris", JSON.stringify(uris));
+        client.global.set("firstPageCoPlayerLastFrequency", previousFrequency);
+    });
+%}
+
+### Co-players second page (run Co-players default page first)
+GET {{baseUrl}}/api/people/{{coPlayerPerson}}/co-players?page=2
+
+> {%
+    client.test("Co-players second page does not repeat the first page", function () {
+        client.assert(response.status === 200, "Expected 200");
+        const body = response.body;
+        client.assert(body.page === 2 && body.pageSize === 10, "Invalid pagination");
+        client.assert(typeof body.hasNextPage === "boolean", "Missing hasNextPage");
+        client.assert(Array.isArray(body.items) && body.items.length <= 10, "Expected up to ten co-players");
+        const savedUris = client.global.get("firstPageCoPlayerUris");
+        client.assert(typeof savedUris === "string", "Run Co-players default page first");
+        const firstPageUris = JSON.parse(savedUris);
+        let previousFrequency = Number(client.global.get("firstPageCoPlayerLastFrequency"));
+        body.items.forEach(person => {
+            client.assert(!firstPageUris.includes(person.personUri), "Repeated co-player");
+            client.assert(Number.isSafeInteger(person.frequency) && person.frequency >= 1 && person.frequency <= previousFrequency, "Frequency must be positive and descending across pages");
+            previousFrequency = person.frequency;
+        });
+    });
+%}
+
+### Person without co-players: verify the parent exists
+GET {{baseUrl}}/api/people/{{personWithoutCoPlayers}}
+
+> {%
+    client.test("Person without co-players exists", function () {
+        client.assert(response.status === 200, "Expected an existing person");
+        client.assert(response.body.uri === "/api/people/{{personWithoutCoPlayers}}", "Unexpected person URI");
+    });
+%}
+
+### Existing person without co-players: expected 200 and an empty collection
+GET {{baseUrl}}/api/people/{{personWithoutCoPlayers}}/co-players
+
+> {%
+    client.test("Existing person without co-players returns an empty collection", function () {
+        client.assert(response.status === 200, "Expected 200");
+        const body = response.body;
+        client.assert(Array.isArray(body.items) && body.items.length === 0, "Expected no co-players");
+        client.assert(body.page === 1 && body.pageSize === 10, "Invalid pagination");
+        client.assert(body.hasNextPage === false, "Empty collection must not have a next page");
+    });
+%}
+
+### Missing person's co-players: expected 404
+GET {{baseUrl}}/api/people/nm9999999/co-players
+
+> {%
+    client.test("Missing person's co-players return 404", function () {
+        client.assert(response.status === 404, "Expected 404");
+        client.assert(response.body.status === 404 && response.body.error === "Not Found", "Invalid error response");
+        client.assert(response.body.message === "Person not found", "Unexpected error message");
+    });
+%}
+
+### Co-players invalid nconst: expected 400
+GET {{baseUrl}}/api/people/nm123/co-players
+
+> {%
+    client.test("Co-players reject invalid nconst", function () {
+        client.assert(response.status === 400, "Expected 400");
+        client.assert(response.body.status === 400 && response.body.error === "Bad Request", "Invalid error response");
+    });
+%}
+
+### Co-players invalid page: expected 400
+GET {{baseUrl}}/api/people/{{coPlayerPerson}}/co-players?page=0
+
+> {%
+    client.test("Co-players reject page=0", function () {
+        client.assert(response.status === 400, "Expected 400");
+        client.assert(response.body.status === 400 && response.body.error === "Bad Request", "Invalid error response");
+    });
+%}
+
+### Co-players custom page size: expected 400
+GET {{baseUrl}}/api/people/{{coPlayerPerson}}/co-players?pageSize=20
+
+> {%
+    client.test("Co-players reject custom page size", function () {
+        client.assert(response.status === 400, "Expected 400");
+        client.assert(response.body.status === 400 && response.body.error === "Bad Request", "Invalid error response");
+        client.assert(response.body.message === "pageSize is fixed at 10", "Unexpected validation message");
+    });
+%}
+
+### Existing title with credits: expected 200 and a non-empty array
+GET {{baseUrl}}/api/titles/{{titleWithCredits}}/credits
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Existing title returns credits", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(Array.isArray(response.body), "Expected an array");
+        assert(response.body.length > 0, "Use a title with credits");
+    });
+
+    client.test("Credit DTO has the expected attributes and types", function () {
+        assert(Array.isArray(response.body) && response.body.length > 0, "Expected credits");
+        const expectedKeys = ["personUri", "name", "ordering", "category", "job", "character", "knownFor"].sort();
+        response.body.forEach(credit => {
+            assert(JSON.stringify(Object.keys(credit).sort()) === JSON.stringify(expectedKeys), "Unexpected DTO attributes");
+            assert(typeof credit.personUri === "string" && /^\/api\/people\/nm[0-9]{7,8}$/.test(credit.personUri), "Invalid personUri");
+            ["name", "category", "job", "character"].forEach(key => {
+                assert(credit[key] === null || typeof credit[key] === "string", "Invalid " + key);
+            });
+            assert(credit.ordering === null || Number.isInteger(credit.ordering), "Invalid ordering");
+            assert(typeof credit.knownFor === "boolean", "Invalid knownFor");
+        });
+    });
+
+    client.test("Credits hide database identifiers", function () {
+        assert(Array.isArray(response.body) && response.body.length > 0, "Expected credits");
+        response.body.forEach(credit => {
+            ["id", "tconst", "nconst"].forEach(key => {
+                assert(!(key in credit), "Database field leaked: " + key);
+            });
+        });
+    });
+
+    client.test("Credits have ascending ordering with null last", function () {
+        assert(Array.isArray(response.body) && response.body.length > 0, "Expected credits");
+        let nullSeen = false;
+        let previous = -Infinity;
+        response.body.forEach(credit => {
+            if (credit.ordering === null) {
+                nullSeen = true;
+            } else {
+                assert(!nullSeen, "Non-null ordering after null");
+                assert(Number.isInteger(credit.ordering) && credit.ordering >= previous, "Ordering must be ascending");
+                previous = credit.ordering;
+            }
+        });
+    });
+%}
+
+### Existing title without credits: verify the parent exists
+GET {{baseUrl}}/api/titles/{{titleWithoutCredits}}
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Title without credits exists", function () {
+        assert(response.status === 200, "Configure titleWithoutCredits as an existing title without credits");
+    });
+%}
+
+### Existing title without credits: expected 200 and an empty array
+GET {{baseUrl}}/api/titles/{{titleWithoutCredits}}/credits
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Existing title without credits returns an empty array", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(Array.isArray(response.body), "Expected an array");
+        assert(response.body.length === 0, "Expected no credits");
+    });
+%}
+
+### Missing title credits: expected 404
+GET {{baseUrl}}/api/titles/{{missingTitle}}/credits
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Missing title credits return 404", function () {
+        assert(response.status === 404, "Expected 404");
+        assert(response.body.status === 404, "Unexpected error status");
+        assert(response.body.error === "Not Found", "Unexpected error type");
+    });
+%}
+
+### Invalid tconst for credits: expected 400
+GET {{baseUrl}}/api/titles/tt123/credits
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Invalid credit tconst returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### Kontrollér databaseforbindelsen
+GET {{baseUrl}}/api/health/db
+
+### Hent en titel
+GET {{baseUrl}}/api/titles/tt11051918
+
+### Test en titel, der ikke findes
+GET {{baseUrl}}/api/titles/tt9999999
+
+### First page (default page=1, fixed pageSize=10)
+GET {{baseUrl}}/api/titles
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Default pagination", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.page === 1, "Expected page 1");
+        assert(response.body.pageSize === 10, "Expected pageSize 10");
+        assert(response.body.items.length <= 10, "Too many titles");
+        assert(typeof response.body.hasNextPage === "boolean", "Missing hasNextPage");
+        client.global.set("firstPageTitleUris", JSON.stringify(response.body.items.map(title => title.uri)));
+    });
+%}
+
+### First page with up to ten titles
+GET {{baseUrl}}/api/titles?page=1
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.global.clear("firstPageTitleUris");
+    client.test("Save first page titles", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.page === 1, "Expected page 1");
+        client.global.set("firstPageTitleUris", JSON.stringify(response.body.items.map(title => title.uri)));
+    });
+%}
+
+### Second page with up to ten titles
+GET {{baseUrl}}/api/titles?page=2
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Second page", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.page === 2, "Expected page 2");
+        assert(response.body.pageSize === 10, "Expected pageSize 10");
+        assert(response.body.items.length <= 10, "Too many titles");
+    });
+
+    client.test("Second page does not repeat first page titles", function () {
+        const savedUris = client.global.get("firstPageTitleUris");
+        assert(typeof savedUris === "string", "Run the first page request before this request");
+        const firstPageUris = JSON.parse(savedUris);
+        const repeatedTitles = response.body.items.filter(title => firstPageUris.includes(title.uri));
+        assert(repeatedTitles.length === 0, "Repeated titles: " + repeatedTitles.map(title => title.uri).join(", "));
+    });
+%}
+
+### Invalid page: expected 400
+GET {{baseUrl}}/api/titles?page=0
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid page", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### Custom page size is not allowed: expected 400
+GET {{baseUrl}}/api/titles?pageSize=20
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject custom page size", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### People default page
+GET {{baseUrl}}/api/people
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People default page", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.page === 1, "Expected page 1");
+        assert(response.body.pageSize === 10, "Expected pageSize 10");
+        assert(response.body.items.length <= 10, "Too many people");
+        assert(typeof response.body.hasNextPage === "boolean", "Missing hasNextPage");
+        assert(response.body.items.every(person => typeof person.uri === "string" && "name" in person && !("name_rating" in person)), "Invalid person DTO");
+        client.global.set("firstPagePeopleUris", JSON.stringify(response.body.items.map(person => person.uri)));
+    });
+%}
+
+### People second page
+GET {{baseUrl}}/api/people?page=2
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People second page", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.page === 2, "Expected page 2");
+        assert(response.body.items.length <= 10, "Too many people");
+        const first = JSON.parse(client.global.get("firstPagePeopleUris"));
+        assert(response.body.items.every(person => !first.includes(person.uri)), "Repeated people");
+    });
+%}
+
+### People reject page=0
+GET {{baseUrl}}/api/people?page=0
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People reject page=0", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### People reject page=-1
+GET {{baseUrl}}/api/people?page=-1
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People reject page=-1", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### People reject page=1.5
+GET {{baseUrl}}/api/people?page=1.5
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People reject page=1.5", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### People reject page=abc
+GET {{baseUrl}}/api/people?page=abc
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People reject page=abc", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### People reject page=9007199254740991
+GET {{baseUrl}}/api/people?page=9007199254740991
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People reject page=9007199254740991", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### People reject pageSize=20
+GET {{baseUrl}}/api/people?pageSize=20
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("People reject pageSize=20", function () {
+        assert(response.status === 400, "Expected 400");
+    });
+%}
+
+### Individual person (run People default page first)
+< {%
+    const savedUris = client.global.get("firstPagePeopleUris");
+    assert(typeof savedUris === "string", "Run People default page before this request");
+    const uris = JSON.parse(savedUris);
+    assert(uris.length > 0, "The database must contain at least one person");
+    request.variables.set("personUri", uris[0]);
+%}
+GET {{baseUrl}}{{personUri}}
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Individual person DTO", function () {
+        assert(response.status === 200, "Expected 200");
+        const person = response.body;
+        const expectedUri = JSON.parse(client.global.get("firstPagePeopleUris"))[0];
+        assert(person.uri === expectedUri, "Unexpected person URI");
+        assert(person.name === null || typeof person.name === "string", "Invalid name");
+        assert(person.birthYear === null || Number.isInteger(person.birthYear), "Invalid birthYear");
+        assert(person.deathYear === null || Number.isInteger(person.deathYear), "Invalid deathYear");
+        assert(person.coPlayersUri === expectedUri + "/co-players", "Invalid coPlayersUri");
+        assert(person.wordsUri === expectedUri + "/words", "Invalid wordsUri");
+        assert(!("primaryName" in person) && !("name_rating" in person), "Database fields leaked into DTO");
+    });
+%}
+
+### Valid nconst that does not exist: expected 404
+GET {{baseUrl}}/api/people/nm9999999
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Missing person returns 404", function () {
+        assert(response.status === 404, "Expected 404");
+        assert(response.body.status === 404, "Expected status 404 in body");
+        assert(response.body.error === "Not Found", "Expected Not Found");
+        assert(response.body.message === "Person not found", "Unexpected error message");
+    });
+%}
+
+### Invalid nconst: abc
+GET {{baseUrl}}/api/people/abc
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: abc", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: tt1234567
+GET {{baseUrl}}/api/people/tt1234567
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: tt1234567", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: NM1234567
+GET {{baseUrl}}/api/people/NM1234567
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: NM1234567", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: nm
+GET {{baseUrl}}/api/people/nm
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: nm", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: nm123456
+GET {{baseUrl}}/api/people/nm123456
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: nm123456", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: nm123456x
+GET {{baseUrl}}/api/people/nm123456x
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: nm123456x", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: nm1234567x
+GET {{baseUrl}}/api/people/nm1234567x
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: nm1234567x", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: nm1234567%20
+GET {{baseUrl}}/api/people/nm1234567%20
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: nm1234567%20", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### Invalid nconst: nm1234567%0A
+GET {{baseUrl}}/api/people/nm1234567%0A
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("Reject invalid nconst: nm1234567%0A", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Expected status 400 in body");
+        assert(response.body.error === "Bad Request", "Expected Bad Request");
+        assert(response.body.message === "nconst must start with nm followed by 7 or 8 digits", "Unexpected validation message");
+    });
+%}
+
+### GET /api/people/hello: expected 400
+GET {{baseUrl}}/api/people/hello
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/people/hello returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### GET /api/people/nm123: expected 400
+GET {{baseUrl}}/api/people/nm123
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/people/nm123 returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### GET /api/titles/hello: expected 400
+GET {{baseUrl}}/api/titles/hello
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/titles/hello returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### GET /api/titles/tt123: expected 400
+GET {{baseUrl}}/api/titles/tt123
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/titles/tt123 returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### GET /api/titles/nm1234567: expected 400
+GET {{baseUrl}}/api/titles/nm1234567
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/titles/nm1234567 returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### GET /api/titles/tt9999999: expected 404
+GET {{baseUrl}}/api/titles/tt9999999
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/titles/tt9999999 returns 404", function () {
+        assert(response.status === 404, "Expected 404");
+        assert(response.body.status === 404, "Unexpected error status in body");
+        assert(response.body.error === "Not Found", "Unexpected error type");
+    });
+%}
+
+### GET /api/titles/tt11051918: expected 200
+GET {{baseUrl}}/api/titles/tt11051918
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/titles/tt11051918 returns 200", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.uri === "/api/titles/tt11051918", "Unexpected resource URI");
+    });
+%}
+
+### GET /api/people/nm0000001: expected 200
+GET {{baseUrl}}/api/people/nm0000001
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/people/nm0000001 returns 200", function () {
+        assert(response.status === 200, "Expected 200");
+        assert(response.body.uri === "/api/people/nm0000001", "Unexpected resource URI");
+    });
+%}
+
+### GET /api/people/nm123456789: expected 400
+GET {{baseUrl}}/api/people/nm123456789
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/people/nm123456789 returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
+
+### GET /api/titles/tt123456789: expected 400
+GET {{baseUrl}}/api/titles/tt123456789
+
+> {%
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    client.test("GET /api/titles/tt123456789 returns 400", function () {
+        assert(response.status === 400, "Expected 400");
+        assert(response.body.status === 400, "Unexpected error status in body");
+        assert(response.body.error === "Bad Request", "Unexpected error type");
+    });
+%}
