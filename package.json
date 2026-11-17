@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "nodemon --exec tsx src/index.ts",
-    "test": "vitest run tests/sandra.test.ts && node --import tsx --test tests/ratings.test.mjs",
+    "test": "vitest run tests/sandra.test.ts tests/christian.integration.test.ts && node --import tsx --test tests/ratings.test.mjs",
     "test:database": "vitest run tests/sandra.database.test.ts"
   },
   "keywords": [],

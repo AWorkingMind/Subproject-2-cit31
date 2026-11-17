@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { findCoPlayers, findPeople, findPerson } from "../data/people.js";
-import { NotFound } from "../middleware/errorHandler.js";
+import { findCoPlayers, findPeople, findPerson, personSearch } from "../data/people.js";
+import { BadRequest, NotFound } from "../middleware/errorHandler.js";
 import { parseCoPlayerPagination, parseNconst, parsePeoplePagination } from "../validation.js";
 import { toCoPlayerCollectionDto, toPersonCollectionDto, toPersonDto } from "./dto.js";
 
@@ -11,6 +11,12 @@ router.get("/", async (req, res) => {
     const result = await findPeople(page);
     const dto = toPersonCollectionDto(result.items, page, pageSize, result.hasNextPage);
     res.status(200).json(dto);
+});
+
+router.get("/search", async (req, res) => {
+    const name = req.query.name;
+    if (typeof name !== "string" || !name.trim()) throw new BadRequest("name must be a non-empty string");
+    res.json(await personSearch(name));
 });
 
 router.get("/:nconst", async (req, res) => {
