@@ -1,6 +1,7 @@
 import express from 'express';
 import { searchRouter } from "./routes/search.js";
 import { peopleRouter } from "./routes/people.js";
+import { bookmarksRouter } from "./routes/bookmarks.js";
 
 // Creates the Express application.
 // This file is responsible for setting up the API itself.
@@ -17,7 +18,7 @@ app.use(express.json());
 
 app.use("/search", searchRouter);
 app.use("/people", peopleRouter);
-
+app.use("/bookmarks", bookmarksRouter);
 // Example:
 // app.use('/users', usersRouter);
 // app.use('/titles', titlesRouter);
