@@ -14,7 +14,7 @@ export async function findUserByName(username: string): Promise<User | undefined
   return rows[0];
 }
 
-// Bruges af registeringen, saa tjek og oprettelse kan vaere samme transaktion.
+// Bruges af registreringen, så tjek og oprettelse kan være samme transaktion.
 export async function findUserByNameOn(
   client: PoolClient, username: string): Promise<User | undefined> {
   const { rows } = await client.query<User>(
