@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app.js';
 import { hashPassword, verifyPassword } from '../src/auth/passwords.js';
 import { signToken, verifyToken } from '../src/auth/tokens.js';
 import { userDto } from '../src/services/users.js';
+import { errorHandler } from '../src/middleware/errorHandler.js';
 
 process.env.JWT_SECRET = 'this-is-an-example-secret-used-only-for-tests-12345'; // Kun test
 
@@ -63,6 +64,24 @@ describe('Person 3', () => {
       .set('Content-Type', 'application/json').send('{');
     expect(res.status).toBe(400);
     expect(res.body.status).toBe(400);
+  });
+
+  it('400 for ugyldig registrering uden databasekald', async () => {
+    const res = await request(app).post('/api/users').send({ username: 'sandra' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Bad Request');
+  });
+
+  it('409 for create_user sin duplicate-fejl', () => {
+    const status = vi.fn().mockReturnThis();
+    const json = vi.fn();
+    errorHandler(
+      { code: 'P0001', message: 'Username already exists' },
+      {} as never, { status, json } as never, (() => undefined) as never);
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      status: 409, error: 'Conflict', message: 'Username already exists'
+    }));
   });
 
   it('CORS sender header til frontend', async () => {

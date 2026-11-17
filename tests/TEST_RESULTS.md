@@ -12,11 +12,11 @@ Vitest is used for unit tests in `sandra.test.ts`. Supertest sends HTTP requests
 
 `npm run build` passed.
 
-`npm test` passed 10 tests. The tests cover password hashing, password verification, JWT creation and validation, user DTO mapping, 400, 401, 403 and 404 error responses, and CORS.
+`npm test` passed 12 tests. The tests cover password hashing, password verification, JWT creation and validation, user DTO mapping, invalid registration, 400, 401, 403, 404 and duplicate-user 409 error responses, and CORS.
 
-Final validation on 2026-11-17 gave the same result: 10 passed and 1 skipped.
+Final validation on 2026-11-17 gave 12 passed and 1 skipped.
 
-One database test was skipped because no real `DB_PASSWORD` is configured. When the existing RUC connection is configured, it uses the real `createUserOn`, `findUserByIdOn`, and `findUserByNameOn` functions on one pool client. It rolls back the test user and checks that it is gone.
+One database test was skipped because no real `DB_PASSWORD` is configured. When the existing RUC connection is configured, it also checks the original `create_user` duplicate-user error on one pool client. It rolls back the test user and checks that it is gone.
 
 ## Requirements
 

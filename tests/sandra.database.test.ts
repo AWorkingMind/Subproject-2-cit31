@@ -18,6 +18,14 @@ describe.skipIf(!enabled)('Data access med rollback (2-E.2)', () => {
       const user = await findUserByIdOn(client, id);
       expect(user?.username).toBe(name);
 
+      let duplicate: unknown;
+      try {
+        await createUserOn(client, name, 'kun-en-test-hash');
+      } catch (error) {
+        duplicate = error;
+      }
+      expect(duplicate).toMatchObject({ message: 'Username already exists' });
+
       await client.query('ROLLBACK');
       transactionStarted = false;
       expect(await findUserByNameOn(client, name)).toBeUndefined(); // Tjekker at testen ikke gemte noget
