@@ -6,9 +6,9 @@ export function userDto(user: { user_id: number; username: string }) {
   return {
     uri,
     username: user.username,
-    bookmarksUri: `${uri}/bookmarks`,
-    searchHistoryUri: `${uri}/search-history`,
-    ratingHistoryUri: `${uri}/ratings`
+    bookmarksUri: '/api/bookmarks',
+    searchHistoryUri: '/api/history/search',
+    ratingHistoryUri: '/api/history/ratings'
   }; // Kun det som frontend må se, aldrig password_hash
 }
 

@@ -4,6 +4,15 @@ import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { ApiError, errorHandler } from './middleware/errorHandler.js';
 
+import healthRouter from './routes/health.js';
+import titlesRouter from './routes/titles.js';
+import peopleRouter from './routes/people.js';
+import ratingsRouter from './routes/ratings.js';
+
+import { searchRouter, wordSearchRouter } from './routes/search.js';
+import { bookmarksRouter } from './routes/bookmarks.js';
+import { historyRouter } from './routes/history.js';
+
 export const app = express();
 
 // Kun Subproject 3's konfigurerede origin får lov til at kalde API'et.
@@ -25,10 +34,17 @@ app.use((err: unknown, _req: express.Request, _res: express.Response, next: expr
 });
 
 app.use('/api/auth', authRouter); // POST /api/auth/login
+app.use('/api/health', healthRouter);
+app.use('/api/titles', titlesRouter);
+app.use(['/api/people', '/people'], peopleRouter);
+app.use(['/api/search', '/search'], searchRouter);
+app.use('/api/word-search', wordSearchRouter);
+app.use(['/api/bookmarks', '/bookmarks'], bookmarksRouter);
+app.use(['/api/history', '/history'], historyRouter);
+app.use('/api/users', ratingsRouter);
 app.use('/api/users', usersRouter); // POST, GET, PATCH og DELETE
-
-// HER skal Person 1 og Person 2 senere sætte deres ruter ind.
-// Fx: app.use('/api/titles', titlesRouter);
 
 app.use((_req, _res, next) => next(new ApiError(404, 'Route not found'))); // Ukendt endpoint
 app.use(errorHandler); // SKAL stå efter alle ruterne
+
+export default app;
