@@ -27,8 +27,5 @@ app.use((err: unknown, _req: express.Request, _res: express.Response, next: expr
 app.use('/api/auth', authRouter); // POST /api/auth/login
 app.use('/api/users', usersRouter); // POST, GET, PATCH og DELETE
 
-// HER skal Person 1 og Person 2 senere sætte deres ruter ind.
-// Fx: app.use('/api/titles', titlesRouter);
-
 app.use((_req, _res, next) => next(new ApiError(404, 'Route not found'))); // Ukendt endpoint
 app.use(errorHandler); // SKAL stå efter alle ruterne
