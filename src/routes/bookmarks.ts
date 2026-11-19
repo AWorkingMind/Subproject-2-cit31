@@ -1,6 +1,6 @@
 import { requireAuth } from "../middleware/auth.js";
 import { Router } from "express";
-import {bookmarkTitle, bookmarkPerson, getBookmarks} from "../data/bookmarks.js";
+import {bookmarkTitle, bookmarkPerson, getBookmarks, deleteBookmark} from "../data/bookmarks.js";
 
 export const bookmarksRouter = Router();
 bookmarksRouter.use(requireAuth);
@@ -56,6 +56,32 @@ bookmarksRouter.get("/", async (req, res, next) => {
         const bookmarks = await getBookmarks(userId);
 
         res.json(bookmarks);
+    } catch (err) {
+        next(err);
+    }
+});
+bookmarksRouter.delete("/:bookmarkId", async (req, res, next) => {
+    try {
+        const bookmarkId = Number(req.params.bookmarkId);
+        const userId = res.locals.userId;
+
+        if (!Number.isInteger(bookmarkId) || bookmarkId <= 0) {
+            res.status(400).json({
+                error: "bookmarkId must be a positive integer"
+            });
+            return;
+        }
+
+        const deleted = await deleteBookmark(userId, bookmarkId);
+
+        if (!deleted) {
+            res.status(404).json({
+                error: "Bookmark not found"
+            });
+            return;
+        }
+
+        res.status(204).send();
     } catch (err) {
         next(err);
     }

@@ -1,15 +1,22 @@
 import { Router } from "express";
-import { findTitle, findTitleCredits, findTitles } from "../data/titles.js";
+import {
+    findTitle,
+    findTitleCredits,
+    findTitles,
+    DEFAULT_TITLE_PAGE_SIZE,
+    MAX_TITLE_PAGE_SIZE
+} from "../data/titles.js";
 import { NotFound } from "../middleware/errorHandler.js";
 import { toCreditDto, toTitleCollectionDto, toTitleDto } from "./dto.js";
-import { parseTconst, parseTitlePagination } from "../validation.js";
+import { parsePagination, parseTconst  } from "../validation.js";
+
 
 const router = Router();
 
 router.get("/", async (req, res) => {
-    const { page, pageSize } = parseTitlePagination(req.query);
+    const { page, pageSize } = parsePagination(req.query, DEFAULT_TITLE_PAGE_SIZE, MAX_TITLE_PAGE_SIZE);
 
-    const result = await findTitles(page);
+    const result = await findTitles(page, pageSize);
     const dto = toTitleCollectionDto(result.items, page, pageSize, result.hasNextPage);
     res.status(200).json(dto);
 });

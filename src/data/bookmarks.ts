@@ -45,3 +45,14 @@ export async function getBookmarks(userId: number): Promise<BookmarkRow[]> {
 
     return result.rows;
 }
+export async function deleteBookmark(userId: number, bookmarkId: number): Promise<boolean> {
+    const result = await pool.query(
+        `DELETE FROM bookmarks
+        WHERE bookmark_id = $1
+          AND user_id = $2
+        `,
+        [bookmarkId, userId]
+    );
+
+    return result.rowCount === 1;
+}

@@ -1,14 +1,24 @@
 import { Router } from "express";
-import { findCoPlayers, findPeople, findPerson, findPersonWords, personSearch } from "../data/people.js";
+import {
+    findCoPlayers,
+    findPeople,
+    findPerson,
+    findPersonWords,
+    personSearch,
+    DEFAULT_PEOPLE_PAGE_SIZE,
+    MAX_PEOPLE_PAGE_SIZE,
+    DEFAULT_CO_PLAYERS_PAGE_SIZE,
+    MAX_CO_PLAYERS_PAGE_SIZE
+} from "../data/people.js";
 import { BadRequest, NotFound } from "../middleware/errorHandler.js";
-import { parseCoPlayerPagination, parseNconst, parsePeoplePagination } from "../validation.js";
+import { parsePagination, parseNconst } from "../validation.js";
 import { toCoPlayerCollectionDto, toPersonCollectionDto, toPersonDto } from "./dto.js";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
-    const { page, pageSize } = parsePeoplePagination(req.query);
-    const result = await findPeople(page);
+    const { page, pageSize } = parsePagination(req.query, DEFAULT_PEOPLE_PAGE_SIZE, MAX_PEOPLE_PAGE_SIZE);
+    const result = await findPeople(page, pageSize);
     const dto = toPersonCollectionDto(result.items, page, pageSize, result.hasNextPage);
     res.status(200).json(dto);
 });
@@ -30,14 +40,14 @@ router.get("/:nconst", async (req, res) => {
 
 router.get("/:nconst/co-players", async (req, res) => {
     const nconst = parseNconst(req.params.nconst);
-    const { page, pageSize } = parseCoPlayerPagination(req.query);
+    const { page, pageSize } = parsePagination(req.query, DEFAULT_CO_PLAYERS_PAGE_SIZE, MAX_CO_PLAYERS_PAGE_SIZE);
 
     const person = await findPerson(nconst);
     if (!person) {
         throw new NotFound("Person not found");
     }
 
-    const result = await findCoPlayers(nconst, page);
+    const result = await findCoPlayers(nconst, page, pageSize);
     const dto = toCoPlayerCollectionDto(result.items, page, pageSize, result.hasNextPage);
     res.status(200).json(dto);
 });

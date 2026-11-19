@@ -1,5 +1,5 @@
 import { BadRequest } from "./middleware/errorHandler.js";
-import { TITLE_PAGE_SIZE } from "./data/titles.js";
+import { DEFAULT_TITLE_PAGE_SIZE, MAX_TITLE_PAGE_SIZE} from "./data/titles.js";
 import { CO_PLAYERS_PAGE_SIZE, PEOPLE_PAGE_SIZE } from "./data/people.js";
 
 export function parseNconst(value: string): string {
@@ -52,29 +52,28 @@ export function parsePositiveInteger(value: unknown, fallback: number, name: str
 
     return parsed;
 }
-
-export function parseTitlePagination(query: { page?: unknown; pageSize?: unknown }) {
-    return parsePagination(query, TITLE_PAGE_SIZE);
-}
-
-export function parsePeoplePagination(query: { page?: unknown; pageSize?: unknown }) {
-    return parsePagination(query, PEOPLE_PAGE_SIZE);
-}
-
-export function parseCoPlayerPagination(query: { page?: unknown; pageSize?: unknown }) {
-    return parsePagination(query, CO_PLAYERS_PAGE_SIZE);
-}
-
-function parsePagination(query: { page?: unknown; pageSize?: unknown }, fixedPageSize: number) {
+//dette tillader klienten at vælge hvor mange pages der kan forekomme. hvis intet er valgt bliver det deafult.
+export function parsePagination(
+    query: { page?: unknown; pageSize?: unknown },
+    defaultPageSize: number,
+    maxPageSize: number
+) {
     const page = parsePositiveInteger(query.page, 1, "page");
-    const pageSize = parsePositiveInteger(query.pageSize, fixedPageSize, "pageSize");
 
-    if (pageSize !== fixedPageSize) {
-        throw new BadRequest(`pageSize is fixed at ${fixedPageSize}`);
-    }
-    if (!Number.isSafeInteger((page - 1) * pageSize)) {
-        throw new BadRequest("Requested page is too large");
+    let pageSize = defaultPageSize;
+
+    if (query.pageSize !== undefined) {
+        const requestedPageSize = parsePositiveInteger(
+            query.pageSize,
+            defaultPageSize,
+            "pageSize"
+        );
+
+        if (requestedPageSize <= maxPageSize) {
+            pageSize = requestedPageSize;
+        }
     }
 
     return { page, pageSize };
 }
+

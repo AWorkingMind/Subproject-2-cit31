@@ -2,6 +2,9 @@ import { pool } from "../db.js";
 import type { TitleRow } from "../types/TitleRow.js";
 import type { CreditDetailsRow } from "../types/CreditRow.js";
 
+export const DEFAULT_TITLE_PAGE_SIZE = 10;
+export const MAX_TITLE_PAGE_SIZE = 50;
+
 export type TitleDetailsRow = TitleRow & {
     titleTypeName: string;
     genres: string[];
@@ -47,22 +50,17 @@ export async function findTitle(tconst: string): Promise<TitleDetailsRow | undef
     return result.rows[0];
 }
 
-export const TITLE_PAGE_SIZE = 10;
-
-export async function findTitles(page: number): Promise<{
-    items: TitleDetailsRow[];
-    hasNextPage: boolean;
-}> {
-    const offset = (page - 1) * TITLE_PAGE_SIZE;
+export async function findTitles(page: number, pageSize: number): Promise<{ items: TitleDetailsRow[]; hasNextPage: boolean; }> {
+    const offset = (page - 1) * pageSize;
     const result = await pool.query<TitleDetailsRow>(
         `${titleDetailsQuery}
          ORDER BY t.tconst
          LIMIT $1 OFFSET $2`,
-        [TITLE_PAGE_SIZE + 1, offset]
+        [pageSize + 1, offset]
     );
 
     return {
-        items: result.rows.slice(0, TITLE_PAGE_SIZE),
-        hasNextPage: result.rows.length > TITLE_PAGE_SIZE,
+        items: result.rows.slice(0, pageSize),
+        hasNextPage: result.rows.length > pageSize,
     };
 }
