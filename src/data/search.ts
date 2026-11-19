@@ -1,23 +1,45 @@
 import { pool } from "../db.js";
+import type { SearchResultRow } from "../types/SearchResultRow.js";
+import type { WeightedSearchRow } from "../types/WeightedSearchRow.js";
+import type { SimilarMovieRow } from "../types/SimilarMovieRow.js";
+import type { BestMatchSearchRow } from "../types/BestMatchSearchRow.js";
+import type { RelatedWordRow } from "../types/RelatedWordRow.js";
 
-//Dette er selve strukturen for hvordan det tilbagevendt row skal se ud. Vi fortæller at det her er sådan
-//vores resultat ska se ud
-export type SearchResultRow = {
-    tconst: string;
-    primaryTitle: string;
-};
-export type WeightedSearchRow = {
-    tconst: string;
-    primaryTitle: string;
-    score: string;
-};
-//PostgresSQL numerisk værdi kommer typisk tilbage igennem pg biblioteket som strings, hvilke er derfor score har string
-export type SimilarMovieRow = {
-    tconst: string;
-    primaryTitle: string;
-    shared_genres: string;
-};
-//Igen bliver bigint værdier returnere som string hvilke forklare shared_generes
+export async function structuredSearch(
+    userId: number,
+    filters: { title: string | null; plot: string | null; character: string | null; person: string | null }
+): Promise<SearchResultRow[]> {
+    const { title, plot, character, person } = filters;
+    const result = await pool.query<SearchResultRow>(
+        "SELECT * FROM public.structured_string_search($1, $2, $3, $4, $5)",
+        [userId, title, plot, character, person]
+    );
+    return result.rows;
+}
+
+export async function exactMatchSearch(words: string[]): Promise<SearchResultRow[]> {
+    const result = await pool.query<SearchResultRow>(
+        "SELECT * FROM public.exact_match_search($1)",
+        [words]
+    );
+    return result.rows;
+}
+
+export async function bestMatchSearch(words: string[]): Promise<BestMatchSearchRow[]> {
+    const result = await pool.query<BestMatchSearchRow>(
+        "SELECT * FROM public.best_match_search($1)",
+        [words]
+    );
+    return result.rows;
+}
+
+export async function relatedWords(words: string[], limit: number): Promise<RelatedWordRow[]> {
+    const result = await pool.query<RelatedWordRow>(
+        "SELECT * FROM public.related_words($1, $2)",
+        [words, limit]
+    );
+    return result.rows;
+}
 
 //her laver jeg en function ved navn "stringSearch" og anvender de korrekte værdier som parameter defineret i vores SQL funktioner
 //Denne fremgang gentager sig meget.

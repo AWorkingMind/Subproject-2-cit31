@@ -1,14 +1,12 @@
-import type { TitleDetailsRow } from "../data/titles.js";
+import type { TitleDetailsRow } from "../types/TitleDetailsRow.js";
 import type { PersonRow } from "../types/PersonRow.js";
-import type { CreditDetailsRow } from "../types/CreditRow.js";
+import type { CreditDetailsRow } from "../types/CreditDetailsRow.js";
 import type { CoPlayerRow } from "../types/CoPlayerRow.js";
 import type { PaginatedDto } from "../types/PaginatedDto.js";
-
-export interface CoPlayerDto {
-    personUri: string;
-    name: string | null;
-    frequency: number;
-}
+import type { CoPlayerDto } from "../types/CoPlayerDto.js";
+import type { CreditDto } from "../types/CreditDto.js";
+import type { TitleDTO } from "../types/TitleDTO.js";
+import type { PersonDto } from "../types/PersonDto.js";
 
 export function toCoPlayerCollectionDto(
     items: CoPlayerRow[],
@@ -38,16 +36,6 @@ export function toCoPlayerDto(row: CoPlayerRow): CoPlayerDto {
     };
 }
 
-export interface CreditDto {
-    personUri: string;
-    name: string | null;
-    ordering: number | null;
-    category: string | null;
-    job: string | null;
-    character: string | null;
-    knownFor: boolean;
-}
-
 export function toCreditDto(credit: CreditDetailsRow): CreditDto {
     return {
         personUri: `/api/people/${encodeURIComponent(credit.nconst)}`,
@@ -58,22 +46,6 @@ export function toCreditDto(credit: CreditDetailsRow): CreditDto {
         character: credit.character,
         knownFor: credit.knownFor,
     };
-}
-
-export interface TitleDTO {
-    uri: string;
-    titleType: string;
-    primaryTitle: string;
-    originalTitle: string | null;
-    startYear: number | null;
-    endYear: number | null;
-    runtimeMinutes: number | null;
-    plot: string | null;
-    poster: string | null;
-    genres: string[];
-    averageRating: number | null;
-    numVotes: number;
-    creditsUri: string;
 }
 
 export function toTitleCollectionDto(
@@ -122,15 +94,6 @@ export function toPersonCollectionDto(
         pageSize,
         hasNextPage,
     };
-}
-
-export interface PersonDto {
-    uri: string;
-    name: string | null;
-    birthYear: number | null;
-    deathYear: number | null;
-    coPlayersUri: string;
-    wordsUri: string;
 }
 
 export function toPersonDto(person: PersonRow): PersonDto {

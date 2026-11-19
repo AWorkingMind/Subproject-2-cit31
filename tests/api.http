@@ -1,8 +1,9 @@
 @baseUrl = http://localhost:3000
+
 # Set this to an existing user. Successful rating requests change database data.
 @ratingUserId = 1
-# Paste a login token for ratingUserId from POST /api/auth/login.
-@authToken = REPLACE_WITH_LOGIN_TOKEN
+# Run the Login request below and paste the returned token here.
+@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQsImlhdCI6MTc5NTA4NjMwMCwiZXhwIjoxNzk1MDg5OTAwfQ._QrexmX3E3DM1sl0h1oT4UqVWpACxPSr8TTUYn0czgM
 @titleWithCredits = tt11051918
 # Verified in the configured database: existing title without credits.
 @titleWithoutCredits = tt10008688
@@ -10,6 +11,40 @@
 @coPlayerPerson = nm0000002
 # Verified in the configured database: existing person with no co-players.
 @personWithoutCoPlayers = nm0000001
+
+### Register a test user once, then use the same credentials in Login
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+    "username": "test2",
+    "password": "123456789"
+}
+
+### Login: copy the token field from the response into authToken above
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "test2",
+    "password": "123456789"
+}
+
+### Exact word search
+GET {{baseUrl}}/api/word-search/exact?words=space,travel
+
+### Best word match
+GET {{baseUrl}}/api/word-search/best?words=space,travel
+
+### Related words
+GET {{baseUrl}}/api/word-search/related?words=space,travel&limit=5
+
+### Structured search: expected 200 (records a search for the signed-in user)
+GET {{baseUrl}}/api/search/structured?title=Alien&plot=crew
+Authorization: Bearer {{authToken}}
+
+### Popular actors for a title: expected 200
+GET {{baseUrl}}/api/titles/{{titleWithCredits}}/actors
 
 ### Create or replace a rating: expected 204 (writes to the database)
 PUT {{baseUrl}}/api/users/{{ratingUserId}}/ratings/{{titleWithCredits}}

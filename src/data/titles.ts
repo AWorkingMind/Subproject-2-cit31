@@ -1,13 +1,17 @@
 import { pool } from "../db.js";
-import type { TitleRow } from "../types/TitleRow.js";
-import type { CreditDetailsRow } from "../types/CreditRow.js";
+import type { CreditDetailsRow } from "../types/CreditDetailsRow.js";
+import type { PopularActorRow } from "../types/PopularActorRow.js";
+import type { TitleDetailsRow } from "../types/TitleDetailsRow.js";
 
-export type TitleDetailsRow = TitleRow & {
-    titleTypeName: string;
-    genres: string[];
-    averageRating: number | null;
-    numVotes: number;
-};
+export async function findPopularActors(tconst: string): Promise<PopularActorRow[]> {
+    const result = await pool.query<PopularActorRow>(
+        `SELECT nconst, "primaryName", name_rating
+         FROM public.popular_actors($1)
+         ORDER BY name_rating DESC NULLS LAST, "primaryName", nconst`,
+        [tconst]
+    );
+    return result.rows;
+}
 
 export async function findTitleCredits(
     tconst: string

@@ -7,6 +7,51 @@ import { signToken } from '../src/auth/tokens.js';
 process.env.JWT_SECRET = 'christian-integration-test-secret-at-least-32-chars';
 afterEach(() => vi.restoreAllMocks());
 
+it('uses structured filters and records the search under the authenticated identity', async () => {
+    const rows = [{ tconst: 'tt0078748', primaryTitle: 'Alien' }];
+    const query = vi.spyOn(pool, 'query').mockResolvedValue({ rows } as never);
+    const response = await request(app).get('/api/search/structured')
+        .auth(signToken(7), { type: 'bearer' })
+        .query({ title: ' Alien ', plot: 'crew', character: 'Ripley', person: 'Weaver', userId: 99 })
+        .expect(200).expect('Cache-Control', 'no-store');
+    expect(response.body).toEqual(rows);
+    expect(query).toHaveBeenCalledWith('SELECT * FROM public.structured_string_search($1, $2, $3, $4, $5)',
+        [7, 'Alien', 'crew', 'Ripley', 'Weaver']);
+});
+
+it('rejects anonymous, empty and repeated structured search filters', async () => {
+    const query = vi.spyOn(pool, 'query');
+    await request(app).get('/api/search/structured?title=Alien').expect(401);
+    await request(app).get('/api/search/structured?title=%20')
+        .auth(signToken(7), { type: 'bearer' }).expect(400);
+    await request(app).get('/api/search/structured?title=Alien&title=Aliens')
+        .auth(signToken(7), { type: 'bearer' }).expect(400);
+    expect(query).not.toHaveBeenCalled();
+});
+
+it.each([
+    ['exact', 'SELECT * FROM public.exact_match_search($1)', []],
+    ['best', 'SELECT * FROM public.best_match_search($1)', []],
+    ['related', 'SELECT * FROM public.related_words($1, $2)', [10]],
+])('runs the %s word search with normalized words', async (route, sql, extra) => {
+    const rows = [{ result: route }];
+    const query = vi.spyOn(pool, 'query').mockResolvedValue({ rows } as never);
+    const response = await request(app).get(`/api/word-search/${route}`)
+        .query({ words: ' space, , travel ' }).expect(200);
+    expect(response.body).toEqual(rows);
+    expect(query).toHaveBeenCalledWith(sql, [['space', 'travel'], ...extra]);
+});
+
+it('validates word search input and passes an explicit related word limit', async () => {
+    const query = vi.spyOn(pool, 'query').mockResolvedValue({ rows: [] } as never);
+    await request(app).get('/api/word-search/exact').expect(400);
+    await request(app).get('/api/word-search/best?words=,%20,').expect(400);
+    await request(app).get('/api/word-search/related?words=space&limit=2147483648').expect(400);
+    expect(query).not.toHaveBeenCalled();
+    await request(app).get('/api/word-search/related?words=space&limit=3').expect(200);
+    expect(query).toHaveBeenCalledWith('SELECT * FROM public.related_words($1, $2)', [['space'], 3]);
+});
+
 it('protects bookmarks and history before accessing the database', async () => {
     const query = vi.spyOn(pool, 'query');
     for (const path of ['/api/bookmarks', '/api/history/search', '/api/history/ratings']) {

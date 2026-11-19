@@ -1,5 +1,6 @@
 import { pool } from "../db.js";
 import type { PersonRow } from "../types/PersonRow.js";
+import type { PersonSearchRow } from "../types/PersonSearchRow.js";
 import type { CoPlayerRow } from "../types/CoPlayerRow.js";
 
 export const PEOPLE_PAGE_SIZE = 10;
@@ -62,13 +63,6 @@ export async function findPerson(
     return result.rows[0];
 }
 
-
-export type PersonSearchRow = {
-    nconst: string;
-    primaryName: string;
-    birthyear: string | null;
-    deathyear: string | null;
-}
 
 export async function personSearch (searchString: string): Promise<PersonSearchRow[]> {
     const result = await pool.query<PersonSearchRow>(

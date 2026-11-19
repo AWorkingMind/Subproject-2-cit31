@@ -1,8 +1,60 @@
 import { requireAuth } from "../middleware/auth.js";
 import {Router} from "express";
 import {
-    stringSearch, weightedSearch, similarMovies} from "../data/search.js";
+    bestMatchSearch, exactMatchSearch, relatedWords, stringSearch, structuredSearch, weightedSearch, similarMovies} from "../data/search.js";
+import { BadRequest } from "../middleware/errorHandler.js";
+import { parsePositiveInteger } from "../validation.js";
 export const searchRouter = Router();
+export const wordSearchRouter = Router();
+
+function parseWords(value: unknown): string[] {
+    if (typeof value !== "string") {
+        throw new BadRequest("words must contain at least one search word");
+    }
+    const words = value.split(",").map(word => word.trim()).filter(Boolean);
+    if (words.length === 0) {
+        throw new BadRequest("words must contain at least one search word");
+    }
+    return words;
+}
+
+wordSearchRouter.get("/exact", async (req, res) => {
+    res.json(await exactMatchSearch(parseWords(req.query.words)));
+});
+
+wordSearchRouter.get("/best", async (req, res) => {
+    res.json(await bestMatchSearch(parseWords(req.query.words)));
+});
+
+wordSearchRouter.get("/related", async (req, res) => {
+    const words = parseWords(req.query.words);
+    const limit = parsePositiveInteger(req.query.limit, 10, "limit");
+    if (limit > 2147483647) {
+        throw new BadRequest("limit must be a positive PostgreSQL integer");
+    }
+    res.json(await relatedWords(words, limit));
+});
+
+function parseSearchFilter(value: unknown, name: string): string | null {
+    if (value === undefined) return null;
+    if (typeof value !== "string") throw new BadRequest(`${name} must be a string`);
+    return value.trim() || null;
+}
+
+searchRouter.get("/structured", requireAuth, async (req, res) => {
+    const filters = {
+        title: parseSearchFilter(req.query.title, "title"),
+        plot: parseSearchFilter(req.query.plot, "plot"),
+        character: parseSearchFilter(req.query.character, "character"),
+        person: parseSearchFilter(req.query.person, "person"),
+    };
+    if (!Object.values(filters).some(Boolean)) {
+        throw new BadRequest("At least one of title, plot, character or person is required");
+    }
+
+    res.set("Cache-Control", "no-store");
+    res.json(await structuredSearch(res.locals.userId, filters));
+});
 
 searchRouter.get("/titles", (req, res, next) => {
     if (req.headers.authorization) requireAuth(req, res, next);

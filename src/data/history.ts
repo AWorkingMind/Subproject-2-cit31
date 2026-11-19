@@ -1,17 +1,6 @@
 import { pool } from "../db.js";
-
-export type SearchHistoryRow = {
-    search_id: number;
-    search_parameters: Record<string, unknown>;
-    searched_at: Date;
-};
-
-export type RatingHistoryRow = {
-    rating_id: number;
-    tconst: string;
-    score: number;
-    rated_at: Date;
-};
+import type { SearchHistoryRow } from "../types/SearchHistoryRow.js";
+import type { RatingHistoryRow } from "../types/RatingHistoryRow.js";
 
 export async function getSearchHistory(userId: number): Promise<SearchHistoryRow[]> {
     const result = await pool.query<SearchHistoryRow>(
