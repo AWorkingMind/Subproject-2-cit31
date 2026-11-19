@@ -5,6 +5,16 @@ import type { CoPlayerRow } from "../types/CoPlayerRow.js";
 export const PEOPLE_PAGE_SIZE = 10;
 export const CO_PLAYERS_PAGE_SIZE = 10;
 
+export async function findPersonWords(nconst: string): Promise<{ word: string; frequency: number }[]> {
+    const result = await pool.query<{ word: string; frequency: string }>(
+        `SELECT word, frequency FROM public.person_words($1)
+         ORDER BY frequency DESC, word`,
+        [nconst]
+    );
+
+    return result.rows.map(({ word, frequency }) => ({ word, frequency: Number(frequency) }));
+}
+
 export async function findCoPlayers(nconst: string, page: number): Promise<{
     items: CoPlayerRow[];
     hasNextPage: boolean;

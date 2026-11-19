@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { findCoPlayers, findPeople, findPerson, personSearch } from "../data/people.js";
+import { findCoPlayers, findPeople, findPerson, findPersonWords, personSearch } from "../data/people.js";
 import { BadRequest, NotFound } from "../middleware/errorHandler.js";
 import { parseCoPlayerPagination, parseNconst, parsePeoplePagination } from "../validation.js";
 import { toCoPlayerCollectionDto, toPersonCollectionDto, toPersonDto } from "./dto.js";
@@ -40,6 +40,16 @@ router.get("/:nconst/co-players", async (req, res) => {
     const result = await findCoPlayers(nconst, page);
     const dto = toCoPlayerCollectionDto(result.items, page, pageSize, result.hasNextPage);
     res.status(200).json(dto);
+});
+
+router.get("/:nconst/words", async (req, res) => {
+    const nconst = parseNconst(req.params.nconst);
+    const person = await findPerson(nconst);
+    if (!person) {
+        throw new NotFound("Person not found");
+    }
+
+    res.json(await findPersonWords(nconst));
 });
 
 export default router;

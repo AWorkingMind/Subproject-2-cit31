@@ -38,6 +38,18 @@ Content-Type: application/json
     });
 %}
 
+### Words associated with a person
+GET {{baseUrl}}/api/people/nm0000001/words
+
+> {%
+    client.test("Person words return up to ten words with numeric frequencies", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(Array.isArray(response.body) && response.body.length <= 10, "Expected up to ten words");
+        client.assert(response.body.every(item => typeof item.word === "string" &&
+            Number.isInteger(item.frequency) && item.frequency > 0), "Invalid word or frequency");
+    });
+%}
+
 ### Co-players default page (use an existing person with co-players)
 GET {{baseUrl}}/api/people/{{coPlayerPerson}}/co-players
 
