@@ -2,6 +2,8 @@
 
 # Set this to an existing user. Successful rating requests change database data.
 @ratingUserId = 1
+# Set this to the account identified by authToken for the profile examples.
+@profileUserId = 4
 # Run the Login request below and paste the returned token here.
 @authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQsImlhdCI6MTc5NTA4NjMwMCwiZXhwIjoxNzk1MDg5OTAwfQ._QrexmX3E3DM1sl0h1oT4UqVWpACxPSr8TTUYn0czgM
 @titleWithCredits = tt11051918
@@ -38,6 +40,22 @@ GET {{baseUrl}}/api/word-search/best?words=space,travel
 
 ### Related words
 GET {{baseUrl}}/api/word-search/related?words=space,travel&limit=5
+
+### User profile: inspect bookmarksUri, ratingHistoryUri and searchHistoryUri
+GET {{baseUrl}}/api/users/{{profileUserId}}
+Authorization: Bearer {{authToken}}
+
+### Follow bookmarksUri from the profile: expected 200
+GET {{baseUrl}}/api/bookmarks
+Authorization: Bearer {{authToken}}
+
+### Follow ratingHistoryUri from the profile: expected 200
+GET {{baseUrl}}/api/history/ratings
+Authorization: Bearer {{authToken}}
+
+### Follow searchHistoryUri from the profile: expected 200
+GET {{baseUrl}}/api/history/search
+Authorization: Bearer {{authToken}}
 
 ### Structured search: expected 200 (records a search for the signed-in user)
 GET {{baseUrl}}/api/search/structured?title=Alien&plot=crew

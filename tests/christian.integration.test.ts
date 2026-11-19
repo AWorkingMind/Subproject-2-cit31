@@ -62,12 +62,15 @@ it('protects bookmarks and history before accessing the database', async () => {
 
 it('passes the logged-in user to bookmarks and history queries', async () => {
     const query = vi.spyOn(pool, 'query').mockResolvedValue({ rows: [] } as never);
+    query.mockResolvedValueOnce({ rows: [{ user_id: 7, username: 'test-user' }] } as never);
+    const token = signToken(7);
+    const profile = await request(app).get('/api/users/7').auth(token, { type: 'bearer' }).expect(200);
     for (const [path, sql] of [
-        ['/api/bookmarks', 'SELECT * FROM get_bookmarks($1)'],
-        ['/api/history/search', 'SELECT * FROM get_search_history($1)'],
-        ['/api/history/ratings', 'SELECT * FROM get_rating_history($1)'],
+        [profile.body.bookmarksUri, 'SELECT * FROM get_bookmarks($1)'],
+        [profile.body.searchHistoryUri, 'SELECT * FROM get_search_history($1)'],
+        [profile.body.ratingHistoryUri, 'SELECT * FROM get_rating_history($1)'],
     ]) {
-        expect((await request(app).get(path).auth(signToken(7), { type: 'bearer' })).status).toBe(200);
+        await request(app).get(path).auth(token, { type: 'bearer' }).expect(200);
         expect(query).toHaveBeenLastCalledWith(sql, [7]);
     }
 });
