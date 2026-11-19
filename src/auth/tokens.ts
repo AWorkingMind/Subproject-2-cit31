@@ -1,16 +1,13 @@
 import jwt from 'jsonwebtoken';
 
-const exampleSecret = 'SKIFT_DENNE_TIL_EN_LANG_TILFAELDIG_HEMMELIG_NOEGLE';
-
 export interface Claims {
   userId: number;
 }
 
 function getSecret(): string {
   const secret = process.env.JWT_SECRET;
-  if (!secret || secret.length < 32
-    || secret === exampleSecret) {
-    throw new Error('JWT_SECRET skal være mindst 32 tilfældige tegn'); // Serveren skal have sin egen nøgle
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET skal mindst vaere 32 tegn'); // Serveren skal have sin egen nøgle
   }
   return secret;
 }
@@ -27,8 +24,7 @@ export function verifyToken(token: string): Claims | undefined {
     }
     return { userId: data.userId };
   } catch (error) {
-    const secret = process.env.JWT_SECRET;
-    if (!secret || secret.length < 32 || secret === exampleSecret) throw error;
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw error;
     return undefined; // Ugyldigt eller udløbet token
   }
 }

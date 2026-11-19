@@ -7,7 +7,7 @@ const enabled = Boolean(process.env.DB_PASSWORD)
   && process.env.DB_PASSWORD !== 'DIT_PASSWORD';
 
 describe.skipIf(!enabled)('Data access med rollback (2-E.2)', () => {
-  it('læser og skriver i en transaktion, som rulles tilbage', async () => {
+  it('laeser og skriver i en transaktion, som rulles tilbage', async () => {
     const client = await pool.connect(); // Samme forbindelse hele vejen
     const name = 'test-sandra-' + Date.now();
     let transactionStarted = false;

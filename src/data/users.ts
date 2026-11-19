@@ -48,12 +48,6 @@ export async function changeUsername(id: number, username: string): Promise<bool
   return result.rowCount === 1; // false hvis brugeren ikke findes
 }
 
-export async function changePassword(id: number, hash: string): Promise<boolean> {
-  const result = await pool.query(
-    'UPDATE users SET password_hash = $2 WHERE user_id = $1', [id, hash]);
-  return result.rowCount === 1;
-}
-
 export async function deleteUser(id: number): Promise<boolean> {
   const result = await pool.query('DELETE FROM users WHERE user_id = $1', [id]);
   return result.rowCount === 1; // Framework-tabeller bruger ON DELETE CASCADE
