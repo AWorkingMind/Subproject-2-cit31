@@ -1,60 +1,52 @@
 import { pool } from "../db.js";
+import { MAX_DATABASE_LIMIT, queryPage } from "./pagination.js";
+import type { Pagination } from "../types/Pagination.js";
 import type { PersonRow } from "../types/PersonRow.js";
 import type { PersonSearchRow } from "../types/PersonSearchRow.js";
 import type { CoPlayerRow } from "../types/CoPlayerRow.js";
+import type { RelatedWordRow } from "../types/RelatedWordRow.js";
 
-export const PEOPLE_PAGE_SIZE = 10;
-export const CO_PLAYERS_PAGE_SIZE = 10;
-
-export async function findPersonWords(nconst: string): Promise<{ word: string; frequency: number }[]> {
-    const result = await pool.query<{ word: string; frequency: string }>(
-        `SELECT word, frequency FROM public.person_words($1)
-         ORDER BY frequency DESC, word`,
-        [nconst]
+export async function findPersonWords(nconst: string, word: string | null, pagination: Pagination) {
+    const rows = await queryPage<RelatedWordRow>(
+        `SELECT word, frequency FROM public.person_words($1, $2)
+         WHERE ($3::text IS NULL OR word = $3) ORDER BY frequency DESC, word`,
+        [nconst, MAX_DATABASE_LIMIT, word],
+        pagination
     );
-
-    return result.rows.map(({ word, frequency }) => ({ word, frequency: Number(frequency) }));
+    return rows.map(({ word, frequency }) => ({ word, frequency: Number(frequency) }));
 }
 
-export async function findCoPlayers(nconst: string, page: number): Promise<{
-    items: CoPlayerRow[];
-    hasNextPage: boolean;
-}> {
-    const offset = (page - 1) * CO_PLAYERS_PAGE_SIZE;
+export async function findCoPlayers(nconst: string, page: number, pageSize: number): Promise<{ items: CoPlayerRow[]; hasNextPage: boolean; }> {
+    const offset = (page - 1) * pageSize;
     const result = await pool.query<CoPlayerRow>(
         `SELECT * FROM public.co_players($1)
          ORDER BY frequency DESC, "primaryName", nconst
          LIMIT $2 OFFSET $3`,
-        [nconst, CO_PLAYERS_PAGE_SIZE + 1, offset]
+        [nconst, pageSize + 1, offset]
     );
 
     return {
-        items: result.rows.slice(0, CO_PLAYERS_PAGE_SIZE),
-        hasNextPage: result.rows.length > CO_PLAYERS_PAGE_SIZE,
+        items: result.rows.slice(0, pageSize),
+        hasNextPage: result.rows.length > pageSize,
     };
 }
 
-export async function findPeople(page: number): Promise<{
-    items: PersonRow[];
-    hasNextPage: boolean;
-}> {
-    const offset = (page - 1) * PEOPLE_PAGE_SIZE;
+export async function findPeople(page: number, pageSize: number): Promise<{ items: PersonRow[]; hasNextPage: boolean; }> {
+    const offset = (page - 1) * pageSize;
     const result = await pool.query<PersonRow>(
         `SELECT * FROM public.person
          ORDER BY nconst
          LIMIT $1 OFFSET $2`,
-        [PEOPLE_PAGE_SIZE + 1, offset]
+        [pageSize + 1, offset]
     );
 
     return {
-        items: result.rows.slice(0, PEOPLE_PAGE_SIZE),
-        hasNextPage: result.rows.length > PEOPLE_PAGE_SIZE,
+        items: result.rows.slice(0, pageSize),
+        hasNextPage: result.rows.length > pageSize,
     };
 }
 
-export async function findPerson(
-    nconst: string
-): Promise<PersonRow | undefined> {
+export async function findPerson(nconst: string): Promise<PersonRow | undefined> {
     const result = await pool.query<PersonRow>(
         "SELECT * FROM public.person WHERE nconst = $1",
         [nconst]
@@ -64,11 +56,10 @@ export async function findPerson(
 }
 
 
-export async function personSearch (searchString: string): Promise<PersonSearchRow[]> {
-    const result = await pool.query<PersonSearchRow>(
-        'SELECT * FROM person_search($1)',
-        [searchString]
+export function personSearch(searchString: string, pagination: Pagination) {
+    return queryPage<PersonSearchRow>(
+        `SELECT * FROM public.person_search($1) ORDER BY "primaryName", nconst`,
+        [searchString],
+        pagination
     );
-
-    return result.rows;
 }

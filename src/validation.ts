@@ -1,6 +1,4 @@
 import { BadRequest } from "./middleware/errorHandler.js";
-import { TITLE_PAGE_SIZE } from "./data/titles.js";
-import { CO_PLAYERS_PAGE_SIZE, PEOPLE_PAGE_SIZE } from "./data/people.js";
 
 export function parseNconst(value: string): string {
     if (!/^nm[0-9]{7,8}$/.test(value)) {
@@ -53,26 +51,23 @@ export function parsePositiveInteger(value: unknown, fallback: number, name: str
     return parsed;
 }
 
-export function parseTitlePagination(query: { page?: unknown; pageSize?: unknown }) {
-    return parsePagination(query, TITLE_PAGE_SIZE);
-}
-
-export function parsePeoplePagination(query: { page?: unknown; pageSize?: unknown }) {
-    return parsePagination(query, PEOPLE_PAGE_SIZE);
-}
-
-export function parseCoPlayerPagination(query: { page?: unknown; pageSize?: unknown }) {
-    return parsePagination(query, CO_PLAYERS_PAGE_SIZE);
-}
-
-function parsePagination(query: { page?: unknown; pageSize?: unknown }, fixedPageSize: number) {
-    const page = parsePositiveInteger(query.page, 1, "page");
-    const pageSize = parsePositiveInteger(query.pageSize, fixedPageSize, "pageSize");
-
-    if (pageSize !== fixedPageSize) {
-        throw new BadRequest(`pageSize is fixed at ${fixedPageSize}`);
+export function parseWordFilter(value: unknown): string | null {
+    if (value === undefined) return null;
+    if (typeof value !== "string" || value.includes("\0")) {
+        throw new BadRequest("word must be a string");
     }
-    if (!Number.isSafeInteger((page - 1) * pageSize)) {
+    return value;
+}
+
+export function parsePagination(
+    query: { page?: unknown; pageSize?: unknown },
+    defaultPageSize = 20,
+    maxPageSize = 100
+) {
+    const page = parsePositiveInteger(query.page, 1, "page");
+    const requestedPageSize = parsePositiveInteger(query.pageSize, defaultPageSize, "pageSize");
+    const pageSize = requestedPageSize <= maxPageSize ? requestedPageSize : defaultPageSize;
+    if (!Number.isSafeInteger((page - 1) * pageSize) || page === Number.MAX_SAFE_INTEGER) {
         throw new BadRequest("Requested page is too large");
     }
 

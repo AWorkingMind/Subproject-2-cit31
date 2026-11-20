@@ -1,31 +1,28 @@
 import { pool } from "../db.js";
+import { queryPage } from "./pagination.js";
+import type { Pagination } from "../types/Pagination.js";
 import type { CreditDetailsRow } from "../types/CreditDetailsRow.js";
 import type { PopularActorRow } from "../types/PopularActorRow.js";
 import type { TitleDetailsRow } from "../types/TitleDetailsRow.js";
 
-export async function findPopularActors(tconst: string): Promise<PopularActorRow[]> {
-    const result = await pool.query<PopularActorRow>(
-        `SELECT nconst, "primaryName", name_rating
-         FROM public.popular_actors($1)
-         ORDER BY name_rating DESC NULLS LAST, "primaryName", nconst`,
-        [tconst]
+export function findPopularActors(tconst: string, pagination: Pagination) {
+    return queryPage<PopularActorRow>(
+        `SELECT nconst, "primaryName", name_rating FROM public.popular_actors($1) ORDER BY name_rating DESC NULLS LAST, "primaryName", nconst`,
+        [tconst],
+        pagination
     );
-    return result.rows;
 }
 
-export async function findTitleCredits(
-    tconst: string
-): Promise<CreditDetailsRow[]> {
-    const result = await pool.query<CreditDetailsRow>(
+export function findTitleCredits(tconst: string, pagination: Pagination) {
+    return queryPage<CreditDetailsRow>(
         `SELECT c.*, p."primaryName"
          FROM public.credit AS c
          LEFT JOIN public.person AS p ON p.nconst = c.nconst
          WHERE c.tconst = $1
          ORDER BY c.ordering, c.id`,
-        [tconst]
+        [tconst],
+        pagination
     );
-
-    return result.rows;
 }
 
 const titleDetailsQuery = `SELECT t.*, tt.type AS "titleTypeName",
@@ -51,22 +48,17 @@ export async function findTitle(tconst: string): Promise<TitleDetailsRow | undef
     return result.rows[0];
 }
 
-export const TITLE_PAGE_SIZE = 10;
-
-export async function findTitles(page: number): Promise<{
-    items: TitleDetailsRow[];
-    hasNextPage: boolean;
-}> {
-    const offset = (page - 1) * TITLE_PAGE_SIZE;
+export async function findTitles(page: number, pageSize: number): Promise<{ items: TitleDetailsRow[]; hasNextPage: boolean; }> {
+    const offset = (page - 1) * pageSize;
     const result = await pool.query<TitleDetailsRow>(
         `${titleDetailsQuery}
          ORDER BY t.tconst
          LIMIT $1 OFFSET $2`,
-        [TITLE_PAGE_SIZE + 1, offset]
+        [pageSize + 1, offset]
     );
 
     return {
-        items: result.rows.slice(0, TITLE_PAGE_SIZE),
-        hasNextPage: result.rows.length > TITLE_PAGE_SIZE,
+        items: result.rows.slice(0, pageSize),
+        hasNextPage: result.rows.length > pageSize,
     };
 }
