@@ -1,7 +1,7 @@
 import { requireAuth } from "../middleware/auth.js";
 import { Router } from "express";
 import { bookmarkTitle, bookmarkPerson, findBookmark, getBookmarks, deleteBookmark } from "../data/bookmarks.js";
-import { NotFound } from "../middleware/errorHandler.js";
+import { BadRequest, NotFound } from "../middleware/errorHandler.js";
 import { parsePositiveInteger, parsePagination } from "../validation.js";
 import { bookmarkUri, toBookmarkDto } from "./dto.js";
 import { toPage } from "./pagination.js";
@@ -16,10 +16,7 @@ bookmarksRouter.post("/titles/:tconst", async (req, res, next) => {
         //har behov for middlewear for at virke
 
         if (typeof tconst !== "string" || tconst.trim() === "") {
-            res.status(400).json({
-                error: "tconst must be a non-empty string"
-            });
-            return;
+            throw new BadRequest("tconst must be a non-empty string");
         }
 
         const bookmarkId = await bookmarkTitle(userId, tconst);
@@ -36,10 +33,7 @@ bookmarksRouter.post("/people/:nconst", async (req, res, next) => {
         const userId = res.locals.userId;
 
         if (typeof nconst !== "string" || nconst.trim() === "") {
-            res.status(400).json({
-                error: "nconst must be a non-empty string"
-            });
-            return;
+            throw new BadRequest("nconst must be a non-empty string");
         }
 
         const bookmarkId = await bookmarkPerson(userId, nconst);
@@ -69,19 +63,13 @@ bookmarksRouter.delete("/:bookmarkId", async (req, res, next) => {
         const userId = res.locals.userId;
 
         if (!Number.isInteger(bookmarkId) || bookmarkId <= 0) {
-            res.status(400).json({
-                error: "bookmarkId must be a positive integer"
-            });
-            return;
+            throw new BadRequest("bookmark must be a positiv intiger");
         }
 
         const deleted = await deleteBookmark(userId, bookmarkId);
 
         if (!deleted) {
-            res.status(404).json({
-                error: "Bookmark not found"
-            });
-            return;
+            throw new NotFound("Bookmark not found");
         }
 
         res.status(204).send();

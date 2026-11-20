@@ -75,8 +75,7 @@ searchRouter.get("/titles", (req, res, next) => {
 }, async (req, res) => {
     const searchString = req.query.title;
     if (typeof searchString !== "string" || searchString.trim() === "") {
-        res.status(400).json({ error: "q must be a non-empty string" });
-        return;
+        throw new BadRequest("title must be a non-empty string");
     }
 
     const pagination = parsePagination(req.query);
