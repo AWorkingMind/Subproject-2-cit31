@@ -1,8 +1,8 @@
 import { requireAuth } from "../middleware/auth.js";
 import { Router } from "express";
 import { bookmarkTitle, bookmarkPerson, findBookmark, getBookmarks, deleteBookmark } from "../data/bookmarks.js";
-import { BadRequest, NotFound } from "../middleware/errorHandler.js";
-import { parsePositiveInteger, parsePagination } from "../validation.js";
+import { NotFound } from "../middleware/errorHandler.js";
+import { parseNconst, parsePagination, parsePositiveInteger, parseTconst } from "../validation.js";
 import { bookmarkUri, toBookmarkDto } from "./dto.js";
 import { toPage } from "./pagination.js";
 
@@ -11,13 +11,8 @@ bookmarksRouter.use(requireAuth);
 
 bookmarksRouter.post("/titles/:tconst", async (req, res, next) => {
     try {
-        const tconst = req.params.tconst;
+        const tconst = parseTconst(req.params.tconst);
         const userId = res.locals.userId;
-        //har behov for middlewear for at virke
-
-        if (typeof tconst !== "string" || tconst.trim() === "") {
-            throw new BadRequest("tconst must be a non-empty string");
-        }
 
         const bookmarkId = await bookmarkTitle(userId, tconst);
 
@@ -29,12 +24,8 @@ bookmarksRouter.post("/titles/:tconst", async (req, res, next) => {
 });
 bookmarksRouter.post("/people/:nconst", async (req, res, next) => {
     try {
-        const nconst = req.params.nconst;
+        const nconst = parseNconst(req.params.nconst);
         const userId = res.locals.userId;
-
-        if (typeof nconst !== "string" || nconst.trim() === "") {
-            throw new BadRequest("nconst must be a non-empty string");
-        }
 
         const bookmarkId = await bookmarkPerson(userId, nconst);
 
@@ -59,12 +50,8 @@ bookmarksRouter.get("/:bookmarkId", async (req, res) => {
 });
 bookmarksRouter.delete("/:bookmarkId", async (req, res, next) => {
     try {
-        const bookmarkId = Number(req.params.bookmarkId);
+        const bookmarkId = parsePositiveInteger(req.params.bookmarkId, 0, "bookmarkId");
         const userId = res.locals.userId;
-
-        if (!Number.isInteger(bookmarkId) || bookmarkId <= 0) {
-            throw new BadRequest("bookmark must be a positiv intiger");
-        }
 
         const deleted = await deleteBookmark(userId, bookmarkId);
 

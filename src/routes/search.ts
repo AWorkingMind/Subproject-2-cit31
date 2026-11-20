@@ -3,7 +3,7 @@ import { Router } from "express";
 import {
     bestMatchSearch, exactMatchSearch, relatedWords, stringSearch, structuredSearch, weightedSearch, similarMovies} from "../data/search.js";
 import { BadRequest } from "../middleware/errorHandler.js";
-import { parsePagination, parsePositiveInteger, parseWordFilter } from "../validation.js";
+import { parsePagination, parsePositiveInteger, parseTconst, parseWordFilter } from "../validation.js";
 import { MAX_DATABASE_LIMIT } from "../data/pagination.js";
 import { toPage } from "./pagination.js";
 import { toTitleReference, toWordReference } from "./dto.js";
@@ -91,11 +91,12 @@ searchRouter.get("/weighted", async (req, res) => {
 });
 
 searchRouter.get("/similar/:tconst", async (req, res) => {
+    const tconst = parseTconst(req.params.tconst);
     const pagination = parsePagination(req.query);
     const limit = parsePositiveInteger(req.query.limit, MAX_DATABASE_LIMIT, "limit");
     if (limit > MAX_DATABASE_LIMIT) {
         throw new BadRequest("limit must be a positive PostgreSQL integer");
     }
-    const results = await similarMovies(req.params.tconst, limit, pagination);
+    const results = await similarMovies(tconst, limit, pagination);
     res.json(toPage(req, results, pagination, toTitleReference));
 });

@@ -136,3 +136,21 @@ it('uses the login identity for search history and allows anonymous search', asy
     expect((await request(app).get('/api/search/titles?title=Alien')).status).toBe(200);
     expect(query).toHaveBeenLastCalledWith(expect.stringContaining('FROM public.title'), ['Alien', 21, 0]);
 });
+
+it('rejects invalid bookmark and similarity route parameters before querying the database', async () => {
+    const query = vi.spyOn(pool, 'query').mockResolvedValue({ rows: [] } as never);
+    const api = request(app);
+    const token = signToken(7);
+    const responses = await Promise.all([
+        api.post('/api/bookmarks/titles/invalid').auth(token, { type: 'bearer' }),
+        api.post('/api/bookmarks/people/invalid').auth(token, { type: 'bearer' }),
+        api.get('/api/search/similar/invalid'),
+        api.get('/api/bookmarks/1e2').auth(token, { type: 'bearer' }),
+        api.delete('/api/bookmarks/1e2').auth(token, { type: 'bearer' }),
+    ]);
+    for (const response of responses) {
+        expect(response.status).toBe(400);
+        expect(response.body).toMatchObject({ status: 400, error: 'Bad Request' });
+    }
+    expect(query).not.toHaveBeenCalled();
+});
