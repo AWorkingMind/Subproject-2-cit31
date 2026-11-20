@@ -2,17 +2,13 @@ import type { Request } from "express";
 import type { PaginatedDto } from "../types/PaginatedDto.js";
 import type { Pagination } from "../types/Pagination.js";
 
-export function toPage<T>(req: Request, rows: T[], { page, pageSize }: Pagination) {
-    const dto = {
-        items: rows.slice(0, pageSize),
-        page,
-        pageSize,
-        hasNextPage: rows.length > pageSize,
-    };
-    return { ...dto, ...paginationLinks(req, dto) };
-}
-
-export function paginationLinks(req: Request, { page, pageSize, hasNextPage }: PaginatedDto<unknown>) {
+export function toPage<Row, Item>(
+    req: Request,
+    result: { items: Row[]; hasPreviousPage: boolean; hasNextPage: boolean },
+    { page, pageSize }: Pagination,
+    mapItem: (row: Row) => Item
+): PaginatedDto<Item> {
+    const { hasPreviousPage, hasNextPage } = result;
     const url = new URL(`${req.protocol}://${req.get("host")}${req.originalUrl}`);
     url.searchParams.set("pageSize", String(pageSize));
 
@@ -22,7 +18,11 @@ export function paginationLinks(req: Request, { page, pageSize, hasNextPage }: P
     }
 
     return {
-        prevPageUri: page > 1 ? pageUri(page - 1) : null,
+        items: result.items.map(mapItem),
+        page,
+        pageSize,
+        hasNextPage,
+        prevPageUri: hasPreviousPage ? pageUri(page - 1) : null,
         nextPageUri: hasNextPage ? pageUri(page + 1) : null,
     };
 }

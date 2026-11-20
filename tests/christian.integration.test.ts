@@ -60,7 +60,7 @@ it('validates word search input and passes an explicit related word limit', asyn
 
 it('preserves the search filter and page size in links to adjacent pages', async () => {
     const query = vi.spyOn(pool, 'query').mockResolvedValue({
-        rows: [{ tconst: 'tt0078748' }, { tconst: 'tt0090605' }],
+        rows: [{ tconst: 'tt0000001' }, { tconst: 'tt0078748' }, { tconst: 'tt0090605' }],
     } as never);
     const response = await request(app).get('/api/word-search/exact')
         .query({ words: 'space,travel', page: 2, pageSize: 1 }).expect(200);
@@ -75,7 +75,19 @@ it('preserves the search filter and page size in links to adjacent pages', async
         expect(link.pathname).toBe('/api/word-search/exact');
         expect(Object.fromEntries(link.searchParams)).toEqual({ words: 'space,travel', page, pageSize: '1' });
     }
-    expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2 OFFSET $3'), [['space', 'travel'], 2, 1]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('LIMIT $2 OFFSET $3'), [['space', 'travel'], 3, 0]);
+});
+
+it('links back from an empty page only if the previous page exists', async () => {
+    vi.spyOn(pool, 'query')
+        .mockResolvedValueOnce({ rows: [{ tconst: 'tt0078748' }] } as never)
+        .mockResolvedValueOnce({ rows: [] } as never);
+    const adjacent = await request(app).get('/api/word-search/exact?words=space&page=2&pageSize=2').expect(200);
+    expect(adjacent.body).toMatchObject({ items: [], nextPageUri: null });
+    expect(new URL(adjacent.body.prevPageUri).searchParams.get('page')).toBe('1');
+
+    const distant = await request(app).get('/api/word-search/exact?words=space&page=99&pageSize=2').expect(200);
+    expect(distant.body).toMatchObject({ items: [], prevPageUri: null, nextPageUri: null });
 });
 
 it('protects bookmarks and history before accessing the database', async () => {

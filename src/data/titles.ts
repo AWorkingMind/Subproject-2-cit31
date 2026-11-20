@@ -48,17 +48,6 @@ export async function findTitle(tconst: string): Promise<TitleDetailsRow | undef
     return result.rows[0];
 }
 
-export async function findTitles(page: number, pageSize: number): Promise<{ items: TitleDetailsRow[]; hasNextPage: boolean; }> {
-    const offset = (page - 1) * pageSize;
-    const result = await pool.query<TitleDetailsRow>(
-        `${titleDetailsQuery}
-         ORDER BY t.tconst
-         LIMIT $1 OFFSET $2`,
-        [pageSize + 1, offset]
-    );
-
-    return {
-        items: result.rows.slice(0, pageSize),
-        hasNextPage: result.rows.length > pageSize,
-    };
+export function findTitles(pagination: Pagination) {
+    return queryPage<TitleDetailsRow>(`${titleDetailsQuery} ORDER BY t.tconst`, [], pagination);
 }

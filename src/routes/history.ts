@@ -12,13 +12,13 @@ historyRouter.use(requireAuth);
 historyRouter.get("/search", async (req, res) => {
     const pagination = parsePagination(req.query);
     const rows = await getSearchHistory(res.locals.userId, pagination);
-    res.json(toPage(req, rows.map(toSearchHistoryDto), pagination));
+    res.json(toPage(req, rows, pagination, toSearchHistoryDto));
 });
 
 historyRouter.get("/ratings", async (req, res) => {
     const pagination = parsePagination(req.query);
     const rows = await getRatingHistory(res.locals.userId, pagination);
-    res.json(toPage(req, rows.map(toRatingHistoryDto), pagination));
+    res.json(toPage(req, rows, pagination, toRatingHistoryDto));
 });
 
 historyRouter.get("/search/:searchId", async (req, res) => {

@@ -8,10 +8,17 @@ export async function queryPage<Row extends QueryResultRow>(
     sql: string,
     params: readonly (number | string | string[] | null)[],
     { page, pageSize }: Pagination
-): Promise<Row[]> {
+) {
+    // Include the previous page to detect it even when it is only partly filled.
+    const previousPageSize = page > 1 ? pageSize : 0;
+    const offset = (page - 1) * pageSize - previousPageSize;
     const result = await pool.query<Row>(
         `${sql} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-        [...params, pageSize + 1, (page - 1) * pageSize]
+        [...params, previousPageSize + pageSize + 1, offset]
     );
-    return result.rows;
+    return {
+        items: result.rows.slice(previousPageSize, previousPageSize + pageSize),
+        hasPreviousPage: previousPageSize > 0 && result.rows.length > 0,
+        hasNextPage: result.rows.length > previousPageSize + pageSize,
+    };
 }

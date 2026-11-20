@@ -7,43 +7,25 @@ import type { CoPlayerRow } from "../types/CoPlayerRow.js";
 import type { RelatedWordRow } from "../types/RelatedWordRow.js";
 
 export async function findPersonWords(nconst: string, word: string | null, pagination: Pagination) {
-    const rows = await queryPage<RelatedWordRow>(
+    const result = await queryPage<RelatedWordRow>(
         `SELECT word, frequency FROM public.person_words($1, $2)
          WHERE ($3::text IS NULL OR word = $3) ORDER BY frequency DESC, word`,
         [nconst, MAX_DATABASE_LIMIT, word],
         pagination
     );
-    return rows.map(({ word, frequency }) => ({ word, frequency: Number(frequency) }));
+    return { ...result, items: result.items.map(({ word, frequency }) => ({ word, frequency: Number(frequency) })) };
 }
 
-export async function findCoPlayers(nconst: string, page: number, pageSize: number): Promise<{ items: CoPlayerRow[]; hasNextPage: boolean; }> {
-    const offset = (page - 1) * pageSize;
-    const result = await pool.query<CoPlayerRow>(
-        `SELECT * FROM public.co_players($1)
-         ORDER BY frequency DESC, "primaryName", nconst
-         LIMIT $2 OFFSET $3`,
-        [nconst, pageSize + 1, offset]
+export function findCoPlayers(nconst: string, pagination: Pagination) {
+    return queryPage<CoPlayerRow>(
+        `SELECT * FROM public.co_players($1) ORDER BY frequency DESC, "primaryName", nconst`,
+        [nconst],
+        pagination
     );
-
-    return {
-        items: result.rows.slice(0, pageSize),
-        hasNextPage: result.rows.length > pageSize,
-    };
 }
 
-export async function findPeople(page: number, pageSize: number): Promise<{ items: PersonRow[]; hasNextPage: boolean; }> {
-    const offset = (page - 1) * pageSize;
-    const result = await pool.query<PersonRow>(
-        `SELECT * FROM public.person
-         ORDER BY nconst
-         LIMIT $1 OFFSET $2`,
-        [pageSize + 1, offset]
-    );
-
-    return {
-        items: result.rows.slice(0, pageSize),
-        hasNextPage: result.rows.length > pageSize,
-    };
+export function findPeople(pagination: Pagination) {
+    return queryPage<PersonRow>("SELECT * FROM public.person ORDER BY nconst", [], pagination);
 }
 
 export async function findPerson(nconst: string): Promise<PersonRow | undefined> {

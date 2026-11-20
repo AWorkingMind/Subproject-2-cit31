@@ -24,13 +24,13 @@ function parseWords(value: unknown): string[] {
 wordSearchRouter.get("/exact", async (req, res) => {
     const pagination = parsePagination(req.query);
     const rows = await exactMatchSearch(parseWords(req.query.words), pagination);
-    res.json(toPage(req, rows.map(toTitleReference), pagination));
+    res.json(toPage(req, rows, pagination, toTitleReference));
 });
 
 wordSearchRouter.get("/best", async (req, res) => {
     const pagination = parsePagination(req.query);
     const rows = await bestMatchSearch(parseWords(req.query.words), pagination);
-    res.json(toPage(req, rows.map(toTitleReference), pagination));
+    res.json(toPage(req, rows, pagination, toTitleReference));
 });
 
 wordSearchRouter.get("/related", async (req, res) => {
@@ -43,7 +43,7 @@ wordSearchRouter.get("/related", async (req, res) => {
     }
     const rows = await relatedWords(words, limit, word, pagination);
     const filters = { words: words.join(","), ...(req.query.limit === undefined ? {} : { limit: String(limit) }) };
-    res.json(toPage(req, rows.map(row => toWordReference(row, "/api/word-search/related", filters)), pagination));
+    res.json(toPage(req, rows, pagination, row => toWordReference(row, "/api/word-search/related", filters)));
 });
 
 function parseSearchFilter(value: unknown, name: string): string | null {
@@ -66,7 +66,7 @@ searchRouter.get("/structured", requireAuth, async (req, res) => {
     const pagination = parsePagination(req.query);
     res.set("Cache-Control", "no-store");
     const rows = await structuredSearch(res.locals.userId, filters, pagination);
-    res.json(toPage(req, rows.map(toTitleReference), pagination));
+    res.json(toPage(req, rows, pagination, toTitleReference));
 });
 
 searchRouter.get("/titles", (req, res, next) => {
@@ -81,14 +81,14 @@ searchRouter.get("/titles", (req, res, next) => {
 
     const pagination = parsePagination(req.query);
     const results = await stringSearch(res.locals.userId ?? null, searchString, pagination);
-    res.json(toPage(req, results.map(toTitleReference), pagination));
+    res.json(toPage(req, results, pagination, toTitleReference));
 });
 
 searchRouter.get("/weighted", async (req, res) => {
     const words = parseWords(req.query.words);
     const pagination = parsePagination(req.query);
     const rows = await weightedSearch(words, pagination);
-    res.json(toPage(req, rows.map(toTitleReference), pagination));
+    res.json(toPage(req, rows, pagination, toTitleReference));
 });
 
 searchRouter.get("/similar/:tconst", async (req, res) => {
@@ -98,5 +98,5 @@ searchRouter.get("/similar/:tconst", async (req, res) => {
         throw new BadRequest("limit must be a positive PostgreSQL integer");
     }
     const results = await similarMovies(req.params.tconst, limit, pagination);
-    res.json(toPage(req, results.map(toTitleReference), pagination));
+    res.json(toPage(req, results, pagination, toTitleReference));
 });

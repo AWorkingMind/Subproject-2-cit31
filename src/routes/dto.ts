@@ -2,7 +2,6 @@ import type { TitleDetailsRow } from "../types/TitleDetailsRow.js";
 import type { PersonRow } from "../types/PersonRow.js";
 import type { CreditDetailsRow } from "../types/CreditDetailsRow.js";
 import type { CoPlayerRow } from "../types/CoPlayerRow.js";
-import type { PaginatedDto } from "../types/PaginatedDto.js";
 import type { CoPlayerDto } from "../types/CoPlayerDto.js";
 import type { CreditDto } from "../types/CreditDto.js";
 import type { TitleDTO } from "../types/TitleDTO.js";
@@ -53,20 +52,6 @@ export function toWordReference<T extends { word: string }>(row: T, path: string
     return { ...row, uri: `${path}?${query}` };
 }
 
-export function toCoPlayerCollectionDto(
-    items: CoPlayerRow[],
-    page: number,
-    pageSize: number,
-    hasNextPage: boolean
-): PaginatedDto<CoPlayerDto> {
-    return {
-        items: items.map(toCoPlayerDto),
-        page,
-        pageSize,
-        hasNextPage,
-    };
-}
-
 export function toCoPlayerDto(row: CoPlayerRow): CoPlayerDto {
     const frequency = Number(row.frequency);
 
@@ -93,20 +78,6 @@ export function toCreditDto(credit: CreditDetailsRow): CreditDto {
     };
 }
 
-export function toTitleCollectionDto(
-    items: TitleDetailsRow[],
-    page: number,
-    pageSize: number,
-    hasNextPage: boolean
-): PaginatedDto<TitleDTO> {
-    return {
-        items: items.map(toTitleDto),
-        page,
-        pageSize,
-        hasNextPage,
-    };
-}
-
 export function toTitleDto(title: TitleDetailsRow): TitleDTO {
     const uri = titleUri(title.tconst);
 
@@ -124,20 +95,6 @@ export function toTitleDto(title: TitleDetailsRow): TitleDTO {
         averageRating: title.averageRating,
         numVotes: title.numVotes,
         creditsUri: `${uri}/credits`,
-    };
-}
-
-export function toPersonCollectionDto(
-    items: PersonRow[],
-    page: number,
-    pageSize: number,
-    hasNextPage: boolean
-): PaginatedDto<PersonDto> {
-    return {
-        items: items.map(toPersonDto),
-        page,
-        pageSize,
-        hasNextPage,
     };
 }
 

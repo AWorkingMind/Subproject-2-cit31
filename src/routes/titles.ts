@@ -1,20 +1,19 @@
 import { Router } from "express";
 import { findPopularActors, findTitle, findTitleCredits, findTitles } from "../data/titles.js";
 import { NotFound } from "../middleware/errorHandler.js";
-import { toCreditDto, toPersonReference, toTitleCollectionDto, toTitleDto } from "./dto.js";
+import { toCreditDto, toPersonReference, toTitleDto } from "./dto.js";
 import { parsePagination, parseTconst } from "../validation.js";
-import { paginationLinks, toPage } from "./pagination.js";
+import { toPage } from "./pagination.js";
 
 const router = Router();
 const DEFAULT_TITLE_PAGE_SIZE = 10;
 const MAX_TITLE_PAGE_SIZE = 50;
 
 router.get("/", async (req, res) => {
-    const { page, pageSize } = parsePagination(req.query, DEFAULT_TITLE_PAGE_SIZE, MAX_TITLE_PAGE_SIZE);
+    const pagination = parsePagination(req.query, DEFAULT_TITLE_PAGE_SIZE, MAX_TITLE_PAGE_SIZE);
 
-    const result = await findTitles(page, pageSize);
-    const dto = toTitleCollectionDto(result.items, page, pageSize, result.hasNextPage);
-    res.status(200).json({ ...dto, ...paginationLinks(req, dto) });
+    const result = await findTitles(pagination);
+    res.json(toPage(req, result, pagination, toTitleDto));
 });
 
 router.get("/:tconst", async (req, res) => {
@@ -40,7 +39,7 @@ router.get("/:tconst/credits", async (req, res) => {
     }
 
     const credits = await findTitleCredits(tconst, pagination);
-    res.json(toPage(req, credits.map(toCreditDto), pagination));
+    res.json(toPage(req, credits, pagination, toCreditDto));
 });
 
 router.get("/:tconst/actors", async (req, res) => {
@@ -52,7 +51,7 @@ router.get("/:tconst/actors", async (req, res) => {
     }
 
     const rows = await findPopularActors(tconst, pagination);
-    res.json(toPage(req, rows.map(toPersonReference), pagination));
+    res.json(toPage(req, rows, pagination, toPersonReference));
 });
 
 export default router;

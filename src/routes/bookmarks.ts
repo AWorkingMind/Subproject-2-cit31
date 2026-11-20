@@ -54,7 +54,7 @@ bookmarksRouter.post("/people/:nconst", async (req, res, next) => {
 bookmarksRouter.get("/", async (req, res) => {
     const pagination = parsePagination(req.query);
     const rows = await getBookmarks(res.locals.userId, pagination);
-    res.json(toPage(req, rows.map(toBookmarkDto), pagination));
+    res.json(toPage(req, rows, pagination, toBookmarkDto));
 });
 
 bookmarksRouter.get("/:bookmarkId", async (req, res) => {
