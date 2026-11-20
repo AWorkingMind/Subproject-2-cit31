@@ -1,8 +1,5 @@
 import jwt from 'jsonwebtoken';
-
-export interface Claims {
-  userId: number;
-}
+import type { Claims } from '../types/Claims.js';
 
 function getSecret(): string {
   const secret = process.env.JWT_SECRET;

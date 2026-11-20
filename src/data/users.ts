@@ -1,11 +1,6 @@
 import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
-
-export interface User {
-  user_id: number;
-  username: string;
-  password_hash: string;
-}
+import type { User } from '../types/User.js';
 
 export async function findUserByName(username: string): Promise<User | undefined> {
   const { rows } = await pool.query<User>(

@@ -1,83 +1,101 @@
 import { requireAuth } from "../middleware/auth.js";
-import {Router} from "express";
+import { Router } from "express";
 import {
-    stringSearch, weightedSearch, similarMovies} from "../data/search.js";
+    bestMatchSearch, exactMatchSearch, relatedWords, stringSearch, structuredSearch, weightedSearch, similarMovies} from "../data/search.js";
+import { BadRequest } from "../middleware/errorHandler.js";
+import { parsePagination, parsePositiveInteger, parseWordFilter } from "../validation.js";
+import { MAX_DATABASE_LIMIT } from "../data/pagination.js";
+import { toPage } from "./pagination.js";
+import { toTitleReference, toWordReference } from "./dto.js";
 export const searchRouter = Router();
+export const wordSearchRouter = Router();
+
+function parseWords(value: unknown): string[] {
+    if (typeof value !== "string") {
+        throw new BadRequest("words must contain at least one search word");
+    }
+    const words = value.split(",").map(word => word.trim()).filter(Boolean);
+    if (words.length === 0) {
+        throw new BadRequest("words must contain at least one search word");
+    }
+    return words;
+}
+
+wordSearchRouter.get("/exact", async (req, res) => {
+    const pagination = parsePagination(req.query);
+    const rows = await exactMatchSearch(parseWords(req.query.words), pagination);
+    res.json(toPage(req, rows.map(toTitleReference), pagination));
+});
+
+wordSearchRouter.get("/best", async (req, res) => {
+    const pagination = parsePagination(req.query);
+    const rows = await bestMatchSearch(parseWords(req.query.words), pagination);
+    res.json(toPage(req, rows.map(toTitleReference), pagination));
+});
+
+wordSearchRouter.get("/related", async (req, res) => {
+    const words = parseWords(req.query.words);
+    const word = parseWordFilter(req.query.word);
+    const pagination = parsePagination(req.query, 10);
+    const limit = parsePositiveInteger(req.query.limit, MAX_DATABASE_LIMIT, "limit");
+    if (limit > MAX_DATABASE_LIMIT) {
+        throw new BadRequest("limit must be a positive PostgreSQL integer");
+    }
+    const rows = await relatedWords(words, limit, word, pagination);
+    const filters = { words: words.join(","), ...(req.query.limit === undefined ? {} : { limit: String(limit) }) };
+    res.json(toPage(req, rows.map(row => toWordReference(row, "/api/word-search/related", filters)), pagination));
+});
+
+function parseSearchFilter(value: unknown, name: string): string | null {
+    if (value === undefined) return null;
+    if (typeof value !== "string") throw new BadRequest(`${name} must be a string`);
+    return value.trim() || null;
+}
+
+searchRouter.get("/structured", requireAuth, async (req, res) => {
+    const filters = {
+        title: parseSearchFilter(req.query.title, "title"),
+        plot: parseSearchFilter(req.query.plot, "plot"),
+        character: parseSearchFilter(req.query.character, "character"),
+        person: parseSearchFilter(req.query.person, "person"),
+    };
+    if (!Object.values(filters).some(Boolean)) {
+        throw new BadRequest("At least one of title, plot, character or person is required");
+    }
+
+    const pagination = parsePagination(req.query);
+    res.set("Cache-Control", "no-store");
+    const rows = await structuredSearch(res.locals.userId, filters, pagination);
+    res.json(toPage(req, rows.map(toTitleReference), pagination));
+});
 
 searchRouter.get("/titles", (req, res, next) => {
     if (req.headers.authorization) requireAuth(req, res, next);
     else next();
-}, async (reg,res,next) => {
-    try {
-        const searchString = reg.query.title;
-
-        if (typeof searchString !== "string" || searchString.trim() === "") {
-            res.status(400).json({
-                error: "q must be a non-empty string"
-            });
-            return;
-        }
-//Virker kun med middleware giver det mening???
-        const userId = res.locals.userId ?? null;
-
-        const results = await stringSearch(userId, searchString)
-
-        res.json(results);
-        //Dette skal videre gives til en centraliseret error håndterings middleware
-} catch (err){
-    next(err);
+}, async (req, res) => {
+    const searchString = req.query.title;
+    if (typeof searchString !== "string" || searchString.trim() === "") {
+        throw new BadRequest("title must be a non-empty string");
     }
+
+    const pagination = parsePagination(req.query);
+    const results = await stringSearch(res.locals.userId ?? null, searchString, pagination);
+    res.json(toPage(req, results.map(toTitleReference), pagination));
 });
 
-searchRouter.get("/weighted", async (req, res, next) => {
-    try {
-        const wordsParam = req.query.words;
-
-        if (typeof wordsParam !== "string" || wordsParam.trim() === "") {
-            res.status(400).json({
-                error: "words must be a non-empty string"
-            });
-            return;
-        }
-
-        //Sørger for der er fordeling ved kommaer samt at ingen mellemrum bliver godtaget
-        const words = wordsParam
-            .split(",")
-            .map(word => word.trim())
-            .filter(word => word !== "");
-
-        const results = await weightedSearch(words);
-
-        res.json(results);
-    } catch (err) {
-        next(err);
-    }
+searchRouter.get("/weighted", async (req, res) => {
+    const words = parseWords(req.query.words);
+    const pagination = parsePagination(req.query);
+    const rows = await weightedSearch(words, pagination);
+    res.json(toPage(req, rows.map(toTitleReference), pagination));
 });
 
-searchRouter.get("/similar/:tconst", async (req, res, next) => {
-    try {
-        const tconst = req.params.tconst;
-        const limitParam = req.query.limit;
-//Der er en limit som brugeren kan bestemme, det er fordi dette er et project krav!
-        let limit = 20;
-
-        if (typeof limitParam === "string") {
-            const parsedLimit = Number(limitParam);
-
-            if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
-                res.status(400).json({
-                    error: "limit must be a positive integer"
-                });
-                return;
-            }
-
-            limit = parsedLimit;
-        }
-
-        const results = await similarMovies(tconst, limit);
-
-        res.json(results);
-    } catch (err) {
-        next(err);
+searchRouter.get("/similar/:tconst", async (req, res) => {
+    const pagination = parsePagination(req.query);
+    const limit = parsePositiveInteger(req.query.limit, MAX_DATABASE_LIMIT, "limit");
+    if (limit > MAX_DATABASE_LIMIT) {
+        throw new BadRequest("limit must be a positive PostgreSQL integer");
     }
+    const results = await similarMovies(req.params.tconst, limit, pagination);
+    res.json(toPage(req, results.map(toTitleReference), pagination));
 });

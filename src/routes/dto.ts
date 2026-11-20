@@ -1,13 +1,56 @@
-import type { TitleDetailsRow } from "../data/titles.js";
+import type { TitleDetailsRow } from "../types/TitleDetailsRow.js";
 import type { PersonRow } from "../types/PersonRow.js";
-import type { CreditDetailsRow } from "../types/CreditRow.js";
+import type { CreditDetailsRow } from "../types/CreditDetailsRow.js";
 import type { CoPlayerRow } from "../types/CoPlayerRow.js";
 import type { PaginatedDto } from "../types/PaginatedDto.js";
+import type { CoPlayerDto } from "../types/CoPlayerDto.js";
+import type { CreditDto } from "../types/CreditDto.js";
+import type { TitleDTO } from "../types/TitleDTO.js";
+import type { PersonDto } from "../types/PersonDto.js";
+import type { BookmarkRow } from "../types/BookmarkRow.js";
+import type { RatingHistoryRow } from "../types/RatingHistoryRow.js";
+import type { SearchHistoryRow } from "../types/SearchHistoryRow.js";
 
-export interface CoPlayerDto {
-    personUri: string;
-    name: string | null;
-    frequency: number;
+function titleUri(tconst: string): string {
+    return `/api/titles/${encodeURIComponent(tconst)}`;
+}
+
+function personUri(nconst: string): string {
+    return `/api/people/${encodeURIComponent(nconst)}`;
+}
+
+export function toTitleReference<T extends { tconst: string }>(row: T) {
+    return { ...row, uri: titleUri(row.tconst) };
+}
+
+export function toPersonReference<T extends { nconst: string }>(row: T) {
+    return { ...row, uri: personUri(row.nconst) };
+}
+
+export function bookmarkUri(id: number): string {
+    return `/api/bookmarks/${id}`;
+}
+
+export function toBookmarkDto(row: BookmarkRow) {
+    return {
+        ...row,
+        uri: bookmarkUri(row.bookmark_id),
+        titleUri: row.tconst === null ? null : titleUri(row.tconst),
+        personUri: row.nconst === null ? null : personUri(row.nconst),
+    };
+}
+
+export function toRatingHistoryDto(row: RatingHistoryRow) {
+    return { ...row, uri: `/api/history/ratings/${row.rating_id}`, titleUri: titleUri(row.tconst) };
+}
+
+export function toSearchHistoryDto(row: SearchHistoryRow) {
+    return { ...row, uri: `/api/history/search/${row.search_id}` };
+}
+
+export function toWordReference<T extends { word: string }>(row: T, path: string, filters: Record<string, string> = {}) {
+    const query = new URLSearchParams({ ...filters, word: row.word });
+    return { ...row, uri: `${path}?${query}` };
 }
 
 export function toCoPlayerCollectionDto(
@@ -32,25 +75,15 @@ export function toCoPlayerDto(row: CoPlayerRow): CoPlayerDto {
     }
 
     return {
-        personUri: `/api/people/${encodeURIComponent(row.nconst)}`,
+        personUri: personUri(row.nconst),
         name: row.primaryName,
         frequency,
     };
 }
 
-export interface CreditDto {
-    personUri: string;
-    name: string | null;
-    ordering: number | null;
-    category: string | null;
-    job: string | null;
-    character: string | null;
-    knownFor: boolean;
-}
-
 export function toCreditDto(credit: CreditDetailsRow): CreditDto {
     return {
-        personUri: `/api/people/${encodeURIComponent(credit.nconst)}`,
+        personUri: personUri(credit.nconst),
         name: credit.primaryName,
         ordering: credit.ordering,
         category: credit.category,
@@ -58,22 +91,6 @@ export function toCreditDto(credit: CreditDetailsRow): CreditDto {
         character: credit.character,
         knownFor: credit.knownFor,
     };
-}
-
-export interface TitleDTO {
-    uri: string;
-    titleType: string;
-    primaryTitle: string;
-    originalTitle: string | null;
-    startYear: number | null;
-    endYear: number | null;
-    runtimeMinutes: number | null;
-    plot: string | null;
-    poster: string | null;
-    genres: string[];
-    averageRating: number | null;
-    numVotes: number;
-    creditsUri: string;
 }
 
 export function toTitleCollectionDto(
@@ -91,7 +108,7 @@ export function toTitleCollectionDto(
 }
 
 export function toTitleDto(title: TitleDetailsRow): TitleDTO {
-    const uri = `/api/titles/${encodeURIComponent(title.tconst)}`;
+    const uri = titleUri(title.tconst);
 
     return {
         uri,
@@ -124,17 +141,8 @@ export function toPersonCollectionDto(
     };
 }
 
-export interface PersonDto {
-    uri: string;
-    name: string | null;
-    birthYear: number | null;
-    deathYear: number | null;
-    coPlayersUri: string;
-    wordsUri: string;
-}
-
 export function toPersonDto(person: PersonRow): PersonDto {
-    const uri = `/api/people/${encodeURIComponent(person.nconst)}`;
+    const uri = personUri(person.nconst);
 
     return {
         uri,
@@ -145,4 +153,3 @@ export function toPersonDto(person: PersonRow): PersonDto {
         wordsUri: `${uri}/words`,
     };
 }
-

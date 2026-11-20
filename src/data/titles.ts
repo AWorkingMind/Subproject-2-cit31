@@ -1,30 +1,28 @@
 import { pool } from "../db.js";
-import type { TitleRow } from "../types/TitleRow.js";
-import type { CreditDetailsRow } from "../types/CreditRow.js";
+import { queryPage } from "./pagination.js";
+import type { Pagination } from "../types/Pagination.js";
+import type { CreditDetailsRow } from "../types/CreditDetailsRow.js";
+import type { PopularActorRow } from "../types/PopularActorRow.js";
+import type { TitleDetailsRow } from "../types/TitleDetailsRow.js";
 
-export const DEFAULT_TITLE_PAGE_SIZE = 10;
-export const MAX_TITLE_PAGE_SIZE = 50;
+export function findPopularActors(tconst: string, pagination: Pagination) {
+    return queryPage<PopularActorRow>(
+        `SELECT nconst, "primaryName", name_rating FROM public.popular_actors($1) ORDER BY name_rating DESC NULLS LAST, "primaryName", nconst`,
+        [tconst],
+        pagination
+    );
+}
 
-export type TitleDetailsRow = TitleRow & {
-    titleTypeName: string;
-    genres: string[];
-    averageRating: number | null;
-    numVotes: number;
-};
-
-export async function findTitleCredits(
-    tconst: string
-): Promise<CreditDetailsRow[]> {
-    const result = await pool.query<CreditDetailsRow>(
+export function findTitleCredits(tconst: string, pagination: Pagination) {
+    return queryPage<CreditDetailsRow>(
         `SELECT c.*, p."primaryName"
          FROM public.credit AS c
          LEFT JOIN public.person AS p ON p.nconst = c.nconst
          WHERE c.tconst = $1
          ORDER BY c.ordering, c.id`,
-        [tconst]
+        [tconst],
+        pagination
     );
-
-    return result.rows;
 }
 
 const titleDetailsQuery = `SELECT t.*, tt.type AS "titleTypeName",

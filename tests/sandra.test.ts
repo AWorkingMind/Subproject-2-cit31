@@ -27,9 +27,9 @@ describe('Person 3', () => {
     expect(result).toEqual({
       uri: '/api/users/7',
       username: 'sandra',
-      bookmarksUri: '/api/users/7/bookmarks',
-      searchHistoryUri: '/api/users/7/search-history',
-      ratingHistoryUri: '/api/users/7/ratings'
+      bookmarksUri: '/api/bookmarks',
+      searchHistoryUri: '/api/history/search',
+      ratingHistoryUri: '/api/history/ratings'
     });
     expect(result).not.toHaveProperty('password_hash');
   });

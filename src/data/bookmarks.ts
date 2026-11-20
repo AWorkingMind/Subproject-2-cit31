@@ -1,24 +1,12 @@
 import { pool } from "../db.js";
-
-export type BookmarkTitleRow = {
-    bookmark_title: number;
-};
-//Denne type oven over er ikke nødvendig i det typen er direkte skrevet ind i bookmarkTitle, men er her for formalitet.
-export type BookmarkPersonRow = {
-    bookmark_person: number;
-};
-
-export type BookmarkRow = {
-    bookmark_id: number;
-    tconst: string | null;
-    primary_title: string | null;
-    nconst: string | null;
-    primary_name: string | null;
-    created_at: Date;
-};
+import { queryPage } from "./pagination.js";
+import type { Pagination } from "../types/Pagination.js";
+import type { BookmarkTitleRow } from "../types/BookmarkTitleRow.js";
+import type { BookmarkPersonRow } from "../types/BookmarkPersonRow.js";
+import type { BookmarkRow } from "../types/BookmarkRow.js";
 
 export async function bookmarkTitle(userId: number, tconst: string): Promise<number> {
-    const result = await pool.query<{ bookmark_title: number }>(
+    const result = await pool.query<BookmarkTitleRow>(
         "SELECT bookmark_title($1, $2)",
         [userId, tconst]
     );
@@ -37,14 +25,21 @@ export async function bookmarkPerson(userId: number, nconst: string): Promise<nu
     if (!row) throw new Error("bookmark_person returned no result");
     return row.bookmark_person;
 }
-export async function getBookmarks(userId: number): Promise<BookmarkRow[]> {
-    const result = await pool.query<BookmarkRow>(
-        "SELECT * FROM get_bookmarks($1)",
-        [userId]
+export function getBookmarks(userId: number, pagination: Pagination) {
+    return queryPage<BookmarkRow>(
+        `SELECT * FROM get_bookmarks($1) ORDER BY created_at DESC, bookmark_id DESC`,
+        [userId],
+        pagination
     );
-
-    return result.rows;
 }
+export async function findBookmark(userId: number, bookmarkId: number) {
+    const result = await pool.query<BookmarkRow>(
+        "SELECT * FROM get_bookmarks($1) WHERE bookmark_id = $2::bigint",
+        [userId, bookmarkId]
+    );
+    return result.rows[0];
+}
+
 export async function deleteBookmark(userId: number, bookmarkId: number): Promise<boolean> {
     const result = await pool.query(
         `DELETE FROM bookmarks

@@ -9,7 +9,7 @@ import titlesRouter from './routes/titles.js';
 import peopleRouter from './routes/people.js';
 import ratingsRouter from './routes/ratings.js';
 
-import { searchRouter } from './routes/search.js';
+import { searchRouter, wordSearchRouter } from './routes/search.js';
 import { bookmarksRouter } from './routes/bookmarks.js';
 import { historyRouter } from './routes/history.js';
 
@@ -38,6 +38,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/titles', titlesRouter);
 app.use(['/api/people', '/people'], peopleRouter);
 app.use(['/api/search', '/search'], searchRouter);
+app.use('/api/word-search', wordSearchRouter);
 app.use(['/api/bookmarks', '/bookmarks'], bookmarksRouter);
 app.use(['/api/history', '/history'], historyRouter);
 app.use('/api/users', ratingsRouter);

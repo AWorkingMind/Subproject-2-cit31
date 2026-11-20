@@ -8,7 +8,3 @@ export interface CreditRow {
     character: string | null;
     knownFor: boolean;
 }
-
-export type CreditDetailsRow = CreditRow & {
-    primaryName: string | null;
-};

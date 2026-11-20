@@ -1,21 +1,19 @@
 import { pool } from "../db.js";
+import { MAX_DATABASE_LIMIT, queryPage } from "./pagination.js";
+import type { Pagination } from "../types/Pagination.js";
 import type { PersonRow } from "../types/PersonRow.js";
+import type { PersonSearchRow } from "../types/PersonSearchRow.js";
 import type { CoPlayerRow } from "../types/CoPlayerRow.js";
+import type { RelatedWordRow } from "../types/RelatedWordRow.js";
 
-export const DEFAULT_PEOPLE_PAGE_SIZE = 10;
-export const MAX_PEOPLE_PAGE_SIZE = 50;
-
-export const DEFAULT_CO_PLAYERS_PAGE_SIZE = 50;
-export const MAX_CO_PLAYERS_PAGE_SIZE = 50;
-
-export async function findPersonWords(nconst: string): Promise<{ word: string; frequency: number }[]> {
-    const result = await pool.query<{ word: string; frequency: string }>(
-        `SELECT word, frequency FROM public.person_words($1)
-         ORDER BY frequency DESC, word`,
-        [nconst]
+export async function findPersonWords(nconst: string, word: string | null, pagination: Pagination) {
+    const rows = await queryPage<RelatedWordRow>(
+        `SELECT word, frequency FROM public.person_words($1, $2)
+         WHERE ($3::text IS NULL OR word = $3) ORDER BY frequency DESC, word`,
+        [nconst, MAX_DATABASE_LIMIT, word],
+        pagination
     );
-
-    return result.rows.map(({ word, frequency }) => ({ word, frequency: Number(frequency) }));
+    return rows.map(({ word, frequency }) => ({ word, frequency: Number(frequency) }));
 }
 
 export async function findCoPlayers(nconst: string, page: number, pageSize: number): Promise<{ items: CoPlayerRow[]; hasNextPage: boolean; }> {
@@ -58,18 +56,10 @@ export async function findPerson(nconst: string): Promise<PersonRow | undefined>
 }
 
 
-export type PersonSearchRow = {
-    nconst: string;
-    primaryName: string;
-    birthyear: string | null;
-    deathyear: string | null;
-}
-
-export async function personSearch (searchString: string): Promise<PersonSearchRow[]> {
-    const result = await pool.query<PersonSearchRow>(
-        'SELECT * FROM person_search($1)',
-        [searchString]
+export function personSearch(searchString: string, pagination: Pagination) {
+    return queryPage<PersonSearchRow>(
+        `SELECT * FROM public.person_search($1) ORDER BY "primaryName", nconst`,
+        [searchString],
+        pagination
     );
-
-    return result.rows;
 }

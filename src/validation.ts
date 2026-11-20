@@ -1,6 +1,4 @@
 import { BadRequest } from "./middleware/errorHandler.js";
-import { DEFAULT_TITLE_PAGE_SIZE, MAX_TITLE_PAGE_SIZE} from "./data/titles.js";
-import { CO_PLAYERS_PAGE_SIZE, PEOPLE_PAGE_SIZE } from "./data/people.js";
 
 export function parseNconst(value: string): string {
     if (!/^nm[0-9]{7,8}$/.test(value)) {
@@ -52,28 +50,26 @@ export function parsePositiveInteger(value: unknown, fallback: number, name: str
 
     return parsed;
 }
-//dette tillader klienten at vælge hvor mange pages der kan forekomme. hvis intet er valgt bliver det deafult.
+
+export function parseWordFilter(value: unknown): string | null {
+    if (value === undefined) return null;
+    if (typeof value !== "string" || value.includes("\0")) {
+        throw new BadRequest("word must be a string");
+    }
+    return value;
+}
+
 export function parsePagination(
     query: { page?: unknown; pageSize?: unknown },
-    defaultPageSize: number,
-    maxPageSize: number
+    defaultPageSize = 20,
+    maxPageSize = 100
 ) {
     const page = parsePositiveInteger(query.page, 1, "page");
-
-    let pageSize = defaultPageSize;
-
-    if (query.pageSize !== undefined) {
-        const requestedPageSize = parsePositiveInteger(
-            query.pageSize,
-            defaultPageSize,
-            "pageSize"
-        );
-
-        if (requestedPageSize <= maxPageSize) {
-            pageSize = requestedPageSize;
-        }
+    const requestedPageSize = parsePositiveInteger(query.pageSize, defaultPageSize, "pageSize");
+    const pageSize = requestedPageSize <= maxPageSize ? requestedPageSize : defaultPageSize;
+    if (!Number.isSafeInteger((page - 1) * pageSize) || page === Number.MAX_SAFE_INTEGER) {
+        throw new BadRequest("Requested page is too large");
     }
 
     return { page, pageSize };
 }
-
